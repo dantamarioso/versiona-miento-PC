@@ -1,0 +1,68 @@
+==================================================================
+  N.I.C.O.L.E - Gestor de Base de Datos - Información Importante
+==================================================================
+
+¡Gracias por instalar N.I.C.O.L.E!
+
+Para que la aplicación funcione correctamente, es **indispensable** configurar una base de datos local en tu ordenador. Este asistente te guiará en el proceso.
+
+------------------------------------------------------------------
+## REQUISITO PRINCIPAL: INSTALAR Y CONFIGURAR XAMPP
+------------------------------------------------------------------
+
+N.I.C.O.L.E necesita un servidor de base de datos MySQL para operar. La forma más sencilla de conseguirlo es instalando **XAMPP**, un paquete de software gratuito que incluye todo lo necesario.
+
+### Paso 1: Descargar e Instalar XAMPP
+
+1.  Si aún no tienes XAMPP, descárgalo desde su sitio web oficial:
+    **https://www.apachefriends.org/es/index.html**
+
+2.  Ejecuta el instalador y sigue los pasos. Puedes dejar las opciones por defecto. Lo más importante es que **MySQL** y **Apache** estén seleccionados.
+
+### Paso 2: Iniciar los Servicios de XAMPP
+
+1.  Abre el **Panel de Control de XAMPP** (XAMPP Control Panel).
+2.  Busca la fila del módulo **Apache** y haz clic en el botón **"Start"**.
+3.  Busca la fila del módulo **MySQL** y haz clic en el botón **"Start"**.
+
+Ambos módulos deben aparecer con un fondo verde, indicando que están en ejecución. ¡Tu servidor local ya está activo!
+
+------------------------------------------------------------------
+## CONFIGURACIÓN DE LA BASE DE DATOS "nicole"
+------------------------------------------------------------------
+
+Ahora, necesitas crear la base de datos `nicole` y cargar su estructura inicial usando el archivo SQL que se proporciona con esta instalación.
+
+### Paso 3: Crear la Base de Datos Vacía
+
+1.  En el Panel de Control de XAMPP, en la fila de MySQL, haz clic en el botón **"Admin"**. Esto abrirá la herramienta `phpMyAdmin` en tu navegador.
+
+2.  En el menú de la izquierda, haz clic en **"Nueva"**.
+
+3.  En el campo "Nombre de la base de datos", escribe exactamente: **nicole**
+
+4.  En el campo de al lado (cotejamiento), selecciona `utf8mb4_general_ci`.
+
+5.  Haz clic en el botón **"Crear"**.
+
+### Paso 4: Importar la Estructura desde el archivo .sql
+
+1.  Una vez creada la base de datos, selecciónala haciendo clic en su nombre (`nicole`) en la lista de la izquierda.
+
+2.  En el menú superior, busca y haz clic en la pestaña **"Importar"**.
+
+3.  En la sección "Archivo a importar", haz clic en el botón **"Seleccionar archivo"**.
+
+4.  Busca y selecciona el archivo **`nicole.sql`**  que se encuentra en la carpeta de instalación de esta aplicación.
+
+5.  Asegúrate de que el juego de caracteres del archivo esté en **"utf8"**.
+
+6.  Desplázate hasta el final de la página y haz clic en el botón **"Importar"**.
+
+Si todo ha salido bien, verás un mensaje en verde indicando que la importación se ha completado con éxito. Ahora deberías ver las tablas (`usuarios_app`, `historial`, etc.) dentro de tu base de datos `nicole`.
+
+------------------------------------------------------------------
+
+¡La configuración ha finalizado!
+
+Ya puedes cerrar esta ventana y continuar con la instalación de N.I.C.O.L.E. Una vez instalado, el programa se conectará automáticamente a la base de datos que acabas de configurar.
