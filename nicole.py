@@ -6,7 +6,7 @@
 # Una aplicación de escritorio con interfaz gráfica (GUI) para visualizar,
 # crear, editar y eliminar registros de una base de datos MySQL, con un
 # diseño de UI mejorado y funcionalidad de exportación unificada.
-#
+#A
 # TECNOLOGÍAS UTILIZADAS:
 # - Python 3, CustomTkinter, PyMySQL, Pillow, OpenPyXL, FPDF
 #
