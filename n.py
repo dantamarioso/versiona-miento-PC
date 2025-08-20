@@ -54,7 +54,8 @@ def conectar_db():
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASSWORD"),
             database=os.getenv("DB_DATABASE"),
-            port=int(os.getenv("DB_PORT"))
+            port=int(os.getenv("DB_PORT")),
+            ssl={"ca": "isrgrootx1.pem"}  
         )
     except MySQLError as err:
         print(f"Error MySQL: No se pudo conectar a MySQL:\n{err}")
@@ -363,7 +364,7 @@ class App(ctk.CTk):
         """Muestra la ventana de login al iniciar la aplicación."""
         win = ctk.CTkToplevel(self)
         win.title("🔐 Login")
-        win.geometry("300x250")
+        win.geometry("500x350")
         win.resizable(False, False)
         win.protocol("WM_DELETE_WINDOW", self.destroy)
         win.transient(self)
@@ -815,7 +816,7 @@ class App(ctk.CTk):
             if db.open: cur.close(); db.close()
 
         ctk.CTkLabel(win, text=f"Usuario: {self.usuario}", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(20, 10))
-        ctk.CTkLabel(win, text="Nuevo Correo Electrónico:", wraplength=400).pack(pady=(10, 5))
+        ctk.CTkLabel(win, text="Nuevo Correo Electrónico: (dejar igual si no se quiere cambiar el correo electrónico)", wraplength=400).pack(pady=(10, 5))
         e_email = ctk.CTkEntry(win, width=350)
         e_email.insert(0, email_actual)
         e_email.pack(padx=20, fill="x")
