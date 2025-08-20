@@ -14,8 +14,9 @@ import re
 import smtplib
 import ssl
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from tkinter import messagebox, ttk, TclError, filedialog
+
 
 import customtkinter as ctk
 import pymysql
@@ -710,10 +711,15 @@ class App(ctk.CTk):
         entry = ctk.CTkEntry(frame1)
         entry.pack(fill="x")
 
+        resend_btn = None
+        resend_timer_label = None
+        resend_seconds = [0]  # Usamos lista para mutabilidad en closure
+
         def enviar_codigo():
             """Envía un código de recuperación por correo electrónico."""
             identificador = entry.get().strip()
-            if not identificador: return messagebox.showwarning("Campo requerido", "Por favor, ingresa tu usuario o correo.", parent=win)
+            if not identificador: 
+                return messagebox.showwarning("Campo requerido", "Por favor, ingresa tu usuario o correo.", parent=win)
 
             db = conectar_db()
             if not db: return
@@ -729,29 +735,44 @@ class App(ctk.CTk):
                 codigo = "".join(random.choices("0123456789", k=6))
                 
                 if enviar_email_cod(email, codigo):
-                    expiracion = datetime.now() + timedelta(minutes=15)
+                    expiracion = datetime.now(timezone.utc) + timedelta(minutes=15)
                     cur.execute("DELETE FROM recuperacion_codigos WHERE username=%s", (username,))
                     cur.execute("INSERT INTO recuperacion_codigos (username, email, codigo, expiracion) VALUES (%s, %s, %s, %s)", (username, email, codigo, expiracion))
                     db.commit()
                     messagebox.showinfo("Código enviado", "Código enviado. Revisa tu correo.", parent=win)
                     frame1.pack_forget()
                     frame2.pack(fill="both", expand=True, padx=20, pady=20)
-                
+                    iniciar_resend_timer()
             except MySQLError as err:
                 messagebox.showerror("Error de BD", f"Ocurrió un error:\n{err}", parent=win)
             finally:
                 if db.open: cur.close(); db.close()
 
+        def iniciar_resend_timer():
+            resend_seconds[0] = 180
+            resend_btn.configure(state="disabled")
+            actualizar_timer()
+
+        def actualizar_timer():
+            if resend_seconds[0] > 0:
+                resend_timer_label.configure(text=f"Puedes reenviar en {resend_seconds[0]} segundos")
+                resend_seconds[0] -= 1
+                win.after(1000, actualizar_timer)
+            else:
+                resend_btn.configure(state="normal")
+                resend_timer_label.configure(text="Puedes volver a enviar el código")
+
         ctk.CTkButton(frame1, text="Enviar Código", command=enviar_codigo).pack(pady=20)
 
         frame2 = ctk.CTkFrame(win)
-        ctk.CTkLabel(frame2, text="Ingresa el código y la nueva contraseña:", wraplength=300).pack(pady=(20, 5))
+        ctk.CTkLabel(frame2, text="Ingresa el código:", wraplength=300).pack(pady=(20, 5))
         entry_codigo = ctk.CTkEntry(frame2, placeholder_text="Código de 6 dígitos")
         entry_codigo.pack(fill="x", padx=20)
         ctk.CTkLabel(frame2, text="Nueva Contraseña:").pack(pady=5)
         entry_new_pass_frame = PasswordEntry(frame2)
         entry_new_pass_frame.pack(fill="x", padx=20)
 
+        # Botón de confirmar código (no se bloquea)
         def actualizar_contrasena():
             """Actualiza la contraseña del usuario si el código es válido."""
             codigo = entry_codigo.get().strip()
@@ -789,7 +810,14 @@ class App(ctk.CTk):
             finally:
                 if db.open: cur.close(); db.close()
 
-        ctk.CTkButton(frame2, text="Actualizar Contraseña", command=actualizar_contrasena).pack(pady=20)
+        btn_confirmar = ctk.CTkButton(frame2, text="Confirmar código y actualizar contraseña", command=actualizar_contrasena)
+        btn_confirmar.pack(pady=10)
+
+        # Botón de volver a enviar código (se bloquea)
+        resend_btn = ctk.CTkButton(frame2, text="Volver a enviar código", command=lambda: [enviar_codigo(), iniciar_resend_timer()])
+        resend_btn.pack(pady=(10, 0))
+        resend_timer_label = ctk.CTkLabel(frame2, text="")
+        resend_timer_label.pack(pady=(0, 10))
 
     def cambiar_datos(self):
         """Muestra una ventana para que el usuario cambie su correo o contraseña."""
