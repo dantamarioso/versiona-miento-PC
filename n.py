@@ -108,8 +108,8 @@ def init_db():
         # Crea el usuario admin si no existe
         cur.execute("SELECT * FROM usuarios_app WHERE username='admin'")
         if not cur.fetchone():
-            h = hashlib.sha256("admin123".encode()).hexdigest()
-            cur.execute("INSERT INTO usuarios_app (username, password_hash, email, es_admin) VALUES (%s, %s, %s, %s)", ("admin", h, "admin@example.com", True))
+            h = hashlib.sha256("Forlyfe135@".encode()).hexdigest()
+            cur.execute("INSERT INTO usuarios_app (username, password_hash, email, es_admin) VALUES (%s, %s, %s, %s)", ("admin", h, "nicole.informacion.1@gmail.com", True))
 
         db.commit()
     except MySQLError as err:
