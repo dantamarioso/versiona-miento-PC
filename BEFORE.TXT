@@ -1,0 +1,1 @@
+Por favor ingrese a la ruta donde se descargo el aplicativo y abra la carpeta de manual y ejecute el archivo now.html dandole doble click
