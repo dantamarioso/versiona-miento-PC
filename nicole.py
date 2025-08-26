@@ -5,19 +5,6 @@
 # Este archivo contiene la aplicación de escritorio usando customtkinter (CTk).
 # Proporciona funciones para conectarse a MySQL, operaciones CRUD sobre tablas,
 # utilidades de validación y envío de correos, y la interfaz gráfica completa.
-#
-# Estructura principal:
-#  - Importaciones y configuración de entorno
-#  - Funciones utilitarias y de acceso a la base de datos:
-#      * resource_path(relative_path)
-#      * conectar_db()
-#      * init_db()
-#      * validar_email(email)
-#      * validar_contrasena(password)
-#      * enviar_email_cod(destinatario, codigo)
-#      * registrar_historial(usuario, accion, tabla, registro_id, antes, despues)
-#      * obtener_tablas()
-#      * obtener_datos(tabla)
 #  - Pequeñas utilidades UI:
 #      * mostrar_toast(texto, parent)
 #      * _bind_responsive_wrap(win, labels, padding)
@@ -50,6 +37,8 @@ import customtkinter as ctk
 import pymysql
 from PIL import Image, ImageTk
 from pymysql.err import MySQLError, IntegrityError
+import threading
+import time
 
 import csv
 import openpyxl
@@ -88,6 +77,20 @@ def resource_path(relative_path: str) -> str:
         # Si no existe, significa que estamos en desarrollo
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
+
+
+# Simple image cache to avoid reopening images repeatedly
+_IMAGE_CACHE = {}
+def load_ctk_image(name, size=None):
+    key = (name, size)
+    if key in _IMAGE_CACHE:
+        return _IMAGE_CACHE[key]
+    try:
+        img = ctk.CTkImage(Image.open(resource_path(name)), size=size) if size else ctk.CTkImage(Image.open(resource_path(name)))
+        _IMAGE_CACHE[key] = img
+        return img
+    except Exception:
+        return None
 
 def conectar_db():
     """
@@ -180,9 +183,73 @@ def validar_contrasena(password):
         return "La contraseña debe contener al menos un carácter especial."
     return None # La contraseña es válida
 
-def enviar_email_cod(destinatario, codigo):
+
+def attach_password_checklist(parent, pass_widget):
     """
-    Envía un correo SMTP con un código de recuperación al destinatario.
+    Adjunta un checklist visual bajo el widget de contraseña.
+    Los requisitos se muestran en rojo si no se cumplen y en verde si se cumplen.
+    pass_widget puede ser un PasswordEntry (tiene .entry) o un CTkEntry.
+    """
+    try:
+        # Determinar el widget de entrada real
+        ent = getattr(pass_widget, 'entry', pass_widget)
+
+        checklist_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        # Colocamos el frame justo después del widget de entrada usando pack/grid según disponibilidad
+        try:
+            # intentamos pack si el widget usa pack
+            checklist_frame.pack(fill="x", padx=16, pady=(6, 0))
+        except Exception:
+            try:
+                checklist_frame.grid(row=99, column=0, sticky="ew", padx=6, pady=(6, 0))
+            except Exception:
+                checklist_frame.place(relx=0, rely=0)
+
+        # Reglas y labels
+        rules = [
+            ("length", "Al menos 8 caracteres", lambda s: len(s) >= 8),
+            ("upper", "Al menos una letra mayúscula", lambda s: any(c.isupper() for c in s)),
+            ("special", "Al menos un carácter especial", lambda s: re.search(r"[!@#$%^&*()_+={}\[\]|\\:;\"'<>,.?/`~]", s) is not None),
+        ]
+
+        labels = {}
+        for key, text, _ in rules:
+            lbl = ctk.CTkLabel(checklist_frame, text=text, font=ctk.CTkFont(size=11))
+            lbl.pack(anchor="w")
+            labels[key] = (lbl, _)
+
+        def _update(ev=None):
+            try:
+                s = ent.get()
+            except Exception:
+                s = ""
+            for key, (lbl, fn) in labels.items():
+                try:
+                    ok = fn(s)
+                    lbl.configure(text_color="#4CAF50" if ok else "#E53935")
+                except Exception:
+                    lbl.configure(text_color="#E53935")
+
+        # Vincular a eventos de escritura
+        try:
+            ent.bind('<KeyRelease>', _update)
+        except Exception:
+            pass
+
+        # inicializar estado
+        _update()
+        return checklist_frame
+    except Exception:
+        return None
+
+def enviar_email_cod(destinatario, codigo, tipo="recuperacion", username=None, email_destino=None):
+    """
+    Envía un correo SMTP con un código según el tipo:
+    - tipo='recuperacion' (por defecto)
+    - tipo='registro' (confirmación de cuenta)
+    - tipo='cambio' (confirmación de cambio de correo)
+
+    username y email_destino son usados para personalizar la plantilla.
     """
     if not (EMAIL_HOST and EMAIL_PORT and EMAIL_USER and EMAIL_PASS and EMAIL_SENDER):
         messagebox.showwarning("Configuración de Correo", "La configuración de correo no está completa en el archivo .env.")
@@ -192,21 +259,39 @@ def enviar_email_cod(destinatario, codigo):
         context = ssl.create_default_context()
         with smtplib.SMTP_SSL(EMAIL_HOST, int(EMAIL_PORT), context=context) as server:
             server.login(EMAIL_USER, EMAIL_PASS.replace(" ", ""))
-            
+
+            # Seleccionar plantilla según el tipo
             asunto = "Código de Recuperación de Contraseña N.I.C.O.L.E"
-            cuerpo = f"""
-            Hola,
+            cuerpo = ""
+            # Intentar obtener username si no fue pasado
+            if not username:
+                try:
+                    db = conectar_db()
+                    if db:
+                        cur = db.cursor()
+                        cur.execute("SELECT username FROM usuarios_app WHERE email=%s", (destinatario,))
+                        res = cur.fetchone()
+                        if res:
+                            username = res[0]
+                except Exception:
+                    username = None
+                finally:
+                    try:
+                        if db and db.open:
+                            cur.close(); db.close()
+                    except Exception:
+                        pass
 
-            Has solicitado un código para recuperar tu contraseña.
-            Tu código de verificación es: {codigo}
+            if tipo == 'registro':
+                asunto = "Confirma tu cuenta en N.I.C.O.L.E"
+                cuerpo = f"Hola {username if username else ''},\n\n¡Bienvenido a N.I.C.O.L.E! Confirma tu cuenta ingresando este código: {codigo}\n\nSi no solicitaste esto, ignora este mensaje.\n\nSaludos,\nEl equipo de N.I.C.O.L.E"
+            elif tipo == 'cambio':
+                asunto = "Confirma cambio de correo en N.I.C.O.L.E"
+                cuerpo = f"Hola {username if username else ''},\n\nHemos recibido una solicitud para cambiar el correo de tu cuenta a {email_destino if email_destino else destinatario}. Para confirmar este cambio ingresa el código: {codigo}\n\nSi no solicitaste este cambio, contacta con el administrador.\n\nSaludos,\nEl equipo de N.I.C.O.L.E"
+            else:
+                asunto = "Código de Recuperación de Contraseña N.I.C.O.L.E"
+                cuerpo = f"Hola {username if username else ''},\n\nHas solicitado un código para recuperar tu contraseña.\nTu código de verificación es: {codigo}\n\nEste código es válido por 15 minutos. Si no solicitaste este cambio, ignora este mensaje.\n\nSaludos,\nEl equipo de N.I.C.O.L.E"
 
-            Este código es válido por 15 minutos. Si no solicitaste este cambio,
-            ignora este mensaje.
-
-            Saludos,
-            El equipo de N.I.C.O.L.E
-            """
-            
             msg = f"Subject: {asunto}\n\n{cuerpo}"
             server.sendmail(EMAIL_SENDER, destinatario, msg.encode('utf-8'))
         return True
@@ -268,18 +353,30 @@ def obtener_tablas():
     if not db:
         return []
 
+    cur = None
     try:
+        # cache simple de tablas para reducir consultas repetidas
+        if getattr(obtener_tablas, '_cache', None):
+            return obtener_tablas._cache
         cur = db.cursor()
         cur.execute("SHOW TABLES")
         tablas = [r[0] for r in cur.fetchall() if r[0] not in ("historial", "usuarios_app", "recuperacion_codigos")]
+        obtener_tablas._cache = tablas
         return tablas
     except MySQLError as err:
         messagebox.showerror("Error de Lectura", f"No se pudieron obtener las tablas:\n{err}")
         return []
     finally:
-        if db.open:
-            cur.close()
-            db.close()
+        try:
+            if cur is not None:
+                cur.close()
+        except Exception:
+            pass
+        try:
+            if db.open:
+                db.close()
+        except Exception:
+            pass
 
 def _validar_nombre_tabla(tabla, lista_tablas_permitidas):
     """
@@ -302,10 +399,11 @@ def obtener_datos(tabla):
         messagebox.showerror("Error de Seguridad", "Nombre de tabla inválido.")
         return [], []
 
+    cur = None
     try:
         cur = db.cursor()
-        # Se construye la consulta de forma segura
-        cur.execute(f"SELECT * FROM `{tabla}`")
+        # Por defecto traer sólo las primeras 200 filas para acelerar la carga inicial
+        cur.execute(f"SELECT * FROM `{tabla}` LIMIT 200")
         cols = [d[0] for d in cur.description]
         rows = cur.fetchall()
         return cols, rows
@@ -313,9 +411,16 @@ def obtener_datos(tabla):
         messagebox.showerror("Error de Lectura", f"No se pudieron obtener los datos de la tabla '{tabla}':\n{err}")
         return [], []
     finally:
-        if db.open:
-            cur.close()
-            db.close()
+        try:
+            if cur is not None:
+                cur.close()
+        except Exception:
+            pass
+        try:
+            if db.open:
+                db.close()
+        except Exception:
+            pass
 
 def mostrar_toast(texto, parent):
     """
@@ -451,9 +556,9 @@ class PasswordEntry(ctk.CTkFrame):
         self.entry.grid(row=0, column=0, sticky="ew")
 
         try:
-            self.eye_open_image = ctk.CTkImage(Image.open(resource_path("eye_open.png")), size=(20, 20))
-            self.eye_closed_image = ctk.CTkImage(Image.open(resource_path("eye_closed.png")), size=(20, 20))
-        except FileNotFoundError:
+            self.eye_open_image = load_ctk_image("eye_open.png", size=(20, 20))
+            self.eye_closed_image = load_ctk_image("eye_closed.png", size=(20, 20))
+        except Exception:
             self.eye_open_image = None
             self.eye_closed_image = None
             messagebox.showwarning("Icono no encontrado", "Asegúrate de tener 'eye_open.png' y 'eye_closed.png' en la carpeta.")
@@ -727,8 +832,8 @@ class App(ctk.CTk):
         self.grid_rowconfigure(3, weight=1)
 
         try:
-            self.brain_icon = ctk.CTkImage(Image.open(resource_path("brain_icon.png")), size=(40, 40))
-            self.help_icon = ctk.CTkImage(Image.open(resource_path("help_icon.png")), size=(25, 25))
+            self.brain_icon = load_ctk_image("brain_icon.png", size=(40, 40))
+            self.help_icon = load_ctk_image("help_icon.png", size=(25, 25))
         except FileNotFoundError:
             self.brain_icon = None
             self.help_icon = None
@@ -757,8 +862,8 @@ class App(ctk.CTk):
         self.combo.grid(row=0, column=1, sticky="ew")
 
         # Botón de Ayuda en la esquina superior derecha
-        btn_help = ctk.CTkButton(top_frame, text="", image=self.help_icon, width=40, command=self.mostrar_ayuda)
-        btn_help.grid(row=0, column=3, padx=6, pady=6, sticky="e")
+        self.btn_help = ctk.CTkButton(top_frame, text="", image=self.help_icon, width=40, command=self.mostrar_ayuda)
+        self.btn_help.grid(row=0, column=3, padx=6, pady=6, sticky="e")
 
         ttk_frame = ctk.CTkFrame(self)
         ttk_frame.grid(row=2, column=0, sticky="nsew", padx=8, pady=(0, 8))
@@ -977,12 +1082,17 @@ class App(ctk.CTk):
         lbl_pass.pack(pady=(8, 4), anchor="w", padx=16)
         e_pass_frame = PasswordEntry(win)
         e_pass_frame.pack(padx=16, fill="x")
+        # Adjuntar checklist de contraseña
+        try:
+            attach_password_checklist(win, e_pass_frame)
+        except Exception:
+            pass
 
         val_admin = ctk.CTkCheckBox(win, text="Otorgar privilegios de Administrador")
         val_admin.pack(pady=10)
 
         def guardar_user():
-            """Guarda el nuevo usuario en la base de datos."""
+            """Inicia el flujo de creación: envía un código al correo y solicita confirmación."""
             u = e_user.get().strip()
             p = e_pass_frame.get().strip()
             e = e_email.get().strip()
@@ -997,30 +1107,98 @@ class App(ctk.CTk):
             if validation_error:
                 return messagebox.showwarning("Contraseña débil", validation_error, parent=win)
 
-            h = hashlib.sha256(p.encode()).hexdigest()
-            esadm = val_admin.get()
+            # Generar código temporal y guardarlo
+            codigo = "".join(random.choices("0123456789", k=6))
+            expiracion = datetime.now(timezone.utc) + timedelta(minutes=15)
 
             db = conectar_db()
-            if not db: return
-
+            if not db:
+                return
             try:
                 cur = db.cursor()
-                cur.execute("INSERT INTO usuarios_app (username, password_hash, email, es_admin) VALUES (%s, %s, %s, %s)", (u, h, e, esadm))
+                # Guardar código asociado al username (limpiamos previos)
+                cur.execute("DELETE FROM recuperacion_codigos WHERE username=%s", (u,))
+                cur.execute("INSERT INTO recuperacion_codigos (username, email, codigo, expiracion) VALUES (%s, %s, %s, %s)", (u, e, codigo, expiracion))
                 db.commit()
-
-                vals_dict = {"username": u, "email": e, "es_admin": esadm, "password_hash": "***"}
-                registrar_historial(self.usuario, "INSERT", "usuarios_app", u, "", str(vals_dict))
-
-                messagebox.showinfo("Éxito", "Usuario creado correctamente.", parent=win)
-                win.destroy()
-            except IntegrityError:
-                messagebox.showerror("Error", "El usuario o correo ya existe.", parent=win)
             except MySQLError as err:
-                messagebox.showerror("Error", f"No se pudo crear el usuario:\n{err}", parent=win)
+                messagebox.showerror("Error de BD", f"Ocurrió un error al generar el código:\n{err}", parent=win)
+                try:
+                    if db.open:
+                        cur.close(); db.close()
+                except Exception:
+                    pass
+                return
             finally:
-                if db.open:
-                    cur.close()
-                    db.close()
+                try:
+                    if db.open:
+                        cur.close(); db.close()
+                except Exception:
+                    pass
+
+            # Enviar el código por correo
+            if not enviar_email_cod(e, codigo, tipo='registro', username=u):
+                return messagebox.showerror("Error de Correo", "No se pudo enviar el código al correo proporcionado.", parent=win)
+
+            # Mostrar formulario de confirmación de código
+            confirm_win = ctk.CTkToplevel(win)
+            confirm_win.title("🔒 Confirmar creación de usuario")
+            confirm_win.minsize(380, 160)
+            confirm_win.transient(win)
+            confirm_win.after(10, confirm_win.grab_set)
+
+            ctk.CTkLabel(confirm_win, text=f"Se ha enviado un código al correo {e}. Ingresa el código para confirmar la creación del usuario.").pack(fill="x", padx=12, pady=(12,6))
+            entry_code = ctk.CTkEntry(confirm_win, placeholder_text="Código de 6 dígitos")
+            entry_code.pack(fill="x", padx=12, pady=(0,8))
+
+            def confirmar_registro():
+                code = entry_code.get().strip()
+                if not code:
+                    return messagebox.showwarning("Código requerido", "Ingresa el código enviado al correo.", parent=confirm_win)
+                db2 = conectar_db()
+                if not db2:
+                    return
+                try:
+                    cur2 = db2.cursor()
+                    cur2.execute("SELECT username FROM recuperacion_codigos WHERE username=%s AND email=%s AND codigo=%s AND expiracion > NOW()", (u, e, code))
+                    res = cur2.fetchone()
+                    if not res:
+                        return messagebox.showwarning("Código inválido", "Código inválido o expirado.", parent=confirm_win)
+
+                    # Registrar usuario
+                    try:
+                        h = hashlib.sha256(p.encode()).hexdigest()
+                        db3 = conectar_db()
+                        if not db3:
+                            return
+                        cur3 = db3.cursor()
+                        cur3.execute("INSERT INTO usuarios_app (username, password_hash, email, es_admin) VALUES (%s, %s, %s, %s)", (u, h, e, val_admin.get()))
+                        db3.commit()
+                        vals_dict = {"username": u, "email": e, "es_admin": val_admin.get(), "password_hash": "***"}
+                        registrar_historial(self.usuario, "INSERT", "usuarios_app", u, "", str(vals_dict))
+                        messagebox.showinfo("Éxito", "Usuario creado correctamente.", parent=win)
+                        # limpiar código
+                        cur2.execute("DELETE FROM recuperacion_codigos WHERE username=%s", (u,))
+                        db2.commit()
+                        try:
+                            if db3.open:
+                                cur3.close(); db3.close()
+                        except Exception:
+                            pass
+                        confirm_win.destroy()
+                        win.destroy()
+                    except IntegrityError:
+                        messagebox.showerror("Error", "El usuario o correo ya existe.", parent=confirm_win)
+                    except MySQLError as err:
+                        messagebox.showerror("Error", f"No se pudo crear el usuario:\n{err}", parent=confirm_win)
+                finally:
+                    try:
+                        if db2.open:
+                            cur2.close(); db2.close()
+                    except Exception:
+                        pass
+
+            ctk.CTkButton(confirm_win, text="Confirmar y crear usuario", command=confirmar_registro).pack(pady=10)
+            entry_code.bind('<Return>', lambda ev: confirmar_registro())
 
         ctk.CTkButton(win, text="💾 Guardar Usuario", command=guardar_user).pack(pady=20)
         _bind_responsive_wrap(win, [lbl_user, lbl_email, lbl_pass])
@@ -1065,7 +1243,7 @@ class App(ctk.CTk):
                 username = res[1]
                 codigo = "".join(random.choices("0123456789", k=6))
 
-                if enviar_email_cod(email, codigo):
+                if enviar_email_cod(email, codigo, tipo='recuperacion', username=username):
                     expiracion = datetime.now(timezone.utc) + timedelta(minutes=15)
                     cur.execute("DELETE FROM recuperacion_codigos WHERE username=%s", (username,))
                     cur.execute("INSERT INTO recuperacion_codigos (username, email, codigo, expiracion) VALUES (%s, %s, %s, %s)", (username, email, codigo, expiracion))
@@ -1110,6 +1288,11 @@ class App(ctk.CTk):
         lbl_newp.pack(pady=(8, 4), anchor="w", padx=12)
         entry_new_pass_frame = PasswordEntry(frame2)
         entry_new_pass_frame.pack(fill="x", padx=12)
+        # Adjuntar checklist de contraseña
+        try:
+            attach_password_checklist(frame2, entry_new_pass_frame)
+        except Exception:
+            pass
 
         def actualizar_contrasena():
             """Actualiza la contraseña del usuario si el código es válido."""
@@ -1197,42 +1380,114 @@ class App(ctk.CTk):
         lbl_pass.pack(pady=(8, 4), anchor="w", padx=16)
         e_pass_frame = PasswordEntry(win)
         e_pass_frame.pack(padx=16, fill="x")
+        # Adjuntar checklist de contraseña
+        try:
+            attach_password_checklist(win, e_pass_frame)
+        except Exception:
+            pass
 
         def actualizar_datos():
-            """Actualiza el correo y/o la contraseña del usuario en la base de datos."""
+            """Inicia el flujo: envía un código al email actual (o al nuevo) y solicita confirmación para aplicar cambios."""
             new_email = e_email.get().strip()
             new_pass = e_pass_frame.get().strip()
 
             if not validar_email(new_email):
                 return messagebox.showwarning("Correo inválido", "Formato de correo inválido.", parent=win)
 
+            # Elegir a qué correo enviar el código: preferir el email actual si no cambia, sino al nuevo
+            destino = email_actual if new_email == email_actual else new_email
+
+            codigo = "".join(random.choices("0123456789", k=6))
+            expiracion = datetime.now(timezone.utc) + timedelta(minutes=15)
+
             db = conectar_db()
             if not db:
                 return
             try:
                 cur = db.cursor()
-                if new_pass:
-                    validation_error = validar_contrasena(new_pass)
-                    if validation_error:
-                        return messagebox.showwarning("Contraseña débil", validation_error, parent=win)
-                    h = hashlib.sha256(new_pass.encode()).hexdigest()
-                    cur.execute("UPDATE usuarios_app SET email=%s, password_hash=%s WHERE username=%s", (new_email, h, self.usuario))
-                    registrar_historial(self.usuario, "UPDATE", "usuarios_app", self.usuario, f"email: {email_actual}, password:***", f"email: {new_email}, password:***")
-                else:
-                    cur.execute("UPDATE usuarios_app SET email=%s WHERE username=%s", (new_email, self.usuario))
-                    registrar_historial(self.usuario, "UPDATE", "usuarios_app", self.usuario, f"email: {email_actual}", f"email: {new_email}")
-
+                cur.execute("DELETE FROM recuperacion_codigos WHERE username=%s", (self.usuario,))
+                cur.execute("INSERT INTO recuperacion_codigos (username, email, codigo, expiracion) VALUES (%s, %s, %s, %s)", (self.usuario, destino, codigo, expiracion))
                 db.commit()
-                messagebox.showinfo("Éxito", "Datos actualizados correctamente.", parent=win)
-                win.destroy()
-            except IntegrityError:
-                messagebox.showerror("Error", "El correo ya está en uso.", parent=win)
             except MySQLError as err:
-                messagebox.showerror("Error", f"No se pudieron actualizar los datos:\n{err}", parent=win)
+                messagebox.showerror("Error de BD", f"Ocurrió un error al generar el código:\n{err}", parent=win)
+                try:
+                    if db.open: cur.close(); db.close()
+                except Exception:
+                    pass
+                return
             finally:
-                if db.open:
-                    cur.close()
-                    db.close()
+                try:
+                    if db.open: cur.close(); db.close()
+                except Exception:
+                    pass
+
+            if not enviar_email_cod(destino, codigo, tipo='cambio', username=self.usuario, email_destino=new_email):
+                return messagebox.showerror("Error de Correo", "No se pudo enviar el código al correo destino.", parent=win)
+
+            # Pedir confirmación del código
+            confirm_win = ctk.CTkToplevel(win)
+            confirm_win.title("🔒 Confirmar cambios")
+            confirm_win.minsize(380, 160)
+            confirm_win.transient(win)
+            confirm_win.after(10, confirm_win.grab_set)
+
+            ctk.CTkLabel(confirm_win, text=f"Se ha enviado un código al correo {destino}. Ingresa el código para confirmar los cambios.").pack(fill="x", padx=12, pady=(12,6))
+            entry_code = ctk.CTkEntry(confirm_win, placeholder_text="Código de 6 dígitos")
+            entry_code.pack(fill="x", padx=12, pady=(0,8))
+
+            def confirmar_cambios():
+                code = entry_code.get().strip()
+                if not code:
+                    return messagebox.showwarning("Código requerido", "Ingresa el código enviado al correo.", parent=confirm_win)
+                db2 = conectar_db()
+                if not db2:
+                    return
+                try:
+                    cur2 = db2.cursor()
+                    cur2.execute("SELECT username FROM recuperacion_codigos WHERE username=%s AND email=%s AND codigo=%s AND expiracion > NOW()", (self.usuario, destino, code))
+                    res = cur2.fetchone()
+                    if not res:
+                        return messagebox.showwarning("Código inválido", "Código inválido o expirado.", parent=confirm_win)
+
+                    # Aplicar cambios
+                    try:
+                        db3 = conectar_db()
+                        if not db3:
+                            return
+                        cur3 = db3.cursor()
+                        if new_pass:
+                            validation_error = validar_contrasena(new_pass)
+                            if validation_error:
+                                return messagebox.showwarning("Contraseña débil", validation_error, parent=confirm_win)
+                            h = hashlib.sha256(new_pass.encode()).hexdigest()
+                            cur3.execute("UPDATE usuarios_app SET email=%s, password_hash=%s WHERE username=%s", (new_email, h, self.usuario))
+                            registrar_historial(self.usuario, "UPDATE", "usuarios_app", self.usuario, f"email: {email_actual}, password:***", f"email: {new_email}, password:***")
+                        else:
+                            cur3.execute("UPDATE usuarios_app SET email=%s WHERE username=%s", (new_email, self.usuario))
+                            registrar_historial(self.usuario, "UPDATE", "usuarios_app", self.usuario, f"email: {email_actual}", f"email: {new_email}")
+                        db3.commit()
+                        # limpiar codigo
+                        cur2.execute("DELETE FROM recuperacion_codigos WHERE username=%s", (self.usuario,))
+                        db2.commit()
+                        messagebox.showinfo("Éxito", "Datos actualizados correctamente.", parent=win)
+                        try:
+                            if db3.open: cur3.close(); db3.close()
+                        except Exception:
+                            pass
+                        confirm_win.destroy()
+                        win.destroy()
+                    except IntegrityError:
+                        messagebox.showerror("Error", "El correo ya está en uso.", parent=confirm_win)
+                    except MySQLError as err:
+                        messagebox.showerror("Error", f"No se pudieron actualizar los datos:\n{err}", parent=confirm_win)
+                finally:
+                    try:
+                        if db2.open: cur2.close(); db2.close()
+                    except Exception:
+                        pass
+
+            ctk.CTkButton(confirm_win, text="Confirmar cambios", command=confirmar_cambios).pack(pady=10)
+            entry_code.bind('<Return>', lambda ev: confirmar_cambios())
 
         ctk.CTkButton(win, text="💾 Guardar Cambios", command=actualizar_datos).pack(pady=16)
         _bind_responsive_wrap(win, [lbl_user, lbl_email, lbl_pass])
@@ -1324,6 +1579,11 @@ class App(ctk.CTk):
                 ent = PasswordEntry(scroll)
                 ent.pack(fill="x", padx=6)
                 entries[c] = ent
+                # Adjuntar checklist para este campo de contraseña
+                try:
+                    attach_password_checklist(scroll, ent)
+                except Exception:
+                    pass
             else:
                 ent = ctk.CTkEntry(scroll)
                 ent.pack(fill="x", padx=6)
@@ -1513,7 +1773,9 @@ class App(ctk.CTk):
         """Muestra una ventana con el historial completo de cambios en la base de datos."""
         win = ctk.CTkToplevel(self)
         win.title("📋 Historial de Cambios")
-        win.minsize(800, 420)
+        # Hacemos la ventana un poco más pequeña por defecto y permitimos redimensionar
+        win.minsize(600, 300)
+        win.geometry("700x360")
         win.resizable(True, True)
         win.transient(self)
         win.protocol("WM_DELETE_WINDOW", win.destroy)
@@ -1546,19 +1808,27 @@ class App(ctk.CTk):
             tv.heading(col, text=col, anchor="w")
 
         db = conectar_db()
-        if not db: return
+        if not db:
+            return
 
         try:
             cur = db.cursor()
-            cur.execute("SELECT id, usuario, fecha, accion, tabla, registro_id, valores_antes, valores_despues FROM historial ORDER BY fecha DESC")
+            # Si el usuario no es admin, solo mostrar sus propias acciones y limitar a 200 filas
+            if self.is_admin:
+                cur.execute("SELECT id, usuario, fecha, accion, tabla, registro_id, valores_antes, valores_despues FROM historial ORDER BY fecha DESC LIMIT 2000")
+            else:
+                cur.execute("SELECT id, usuario, fecha, accion, tabla, registro_id, valores_antes, valores_despues FROM historial WHERE usuario=%s ORDER BY fecha DESC LIMIT 200", (self.usuario,))
             for r in cur.fetchall():
                 tv.insert("", "end", values=r)
         except MySQLError as err:
             messagebox.showerror("Error", f"No se pudo cargar el historial:\n{err}", parent=win)
         finally:
-            if db.open:
-                cur.close()
-                db.close()
+            try:
+                if db.open:
+                    cur.close()
+                    db.close()
+            except Exception:
+                pass
 
         vsb = ttk.Scrollbar(frame, orient="vertical", command=tv.yview)
         tv.configure(yscrollcommand=vsb.set)
@@ -1574,14 +1844,89 @@ class App(ctk.CTk):
 
     def mostrar_ayuda(self):
         """Muestra una ventana de ayuda y preguntas frecuentes."""
-        win = ctk.CTkToplevel(self)
-        win.title("❓ Ayuda y Preguntas Frecuentes")
-        win.minsize(480, 360)
-        win.resizable(True, True)
-        win.transient(self)
-        win.protocol("WM_DELETE_WINDOW", win.destroy)
-        win.after(10, win.grab_set)
+        # Si ya hay un dropdown abierto, ciérralo (toggle)
+        try:
+            if getattr(self, 'help_dropdown', None) and self.help_dropdown.winfo_exists():
+                try:
+                    self.help_dropdown.destroy()
+                except Exception:
+                    pass
+                self.help_dropdown = None
+                return
+        except Exception:
+            pass
 
+        # crear un Toplevel sin decoraciones para que actúe como un "dropdown" centrado en el botón
+        win = ctk.CTkToplevel(self)
+        self.help_dropdown = win
+        # quitar bordes/decoration para apariencia de menú
+        try:
+            win.overrideredirect(True)
+        except Exception:
+            # en algunos entornos customtkinter puede no soportarlo; ignorar
+            pass
+        # dar una clase de título interna (útil para debug)
+        win.title("Ayuda")
+
+        # tamaño razonable; el contenido puede expandirse
+        DEFAULT_W = 460
+        DEFAULT_H = 340
+        win.geometry(f"{DEFAULT_W}x{DEFAULT_H}")
+
+        # posicionar centrado respecto al botón
+        try:
+            btn = getattr(self, 'btn_help', None)
+            win.update_idletasks()
+            w = DEFAULT_W
+            h = DEFAULT_H
+            screen_w = win.winfo_screenwidth()
+            screen_h = win.winfo_screenheight()
+
+            if btn:
+                bx = btn.winfo_rootx()
+                by = btn.winfo_rooty()
+                bw = btn.winfo_width()
+                bh = btn.winfo_height()
+
+                x = bx + (bw - w) // 2
+                y = by + bh + 6
+
+                # ajustar para que no quede fuera de pantalla
+                if x + w + 8 > screen_w:
+                    x = max(8, bx + bw - w)
+                if x < 8:
+                    x = 8
+
+                # si no cabe por abajo, mostrar por arriba del botón
+                if y + h + 8 > screen_h:
+                    y = max(8, by - h - 6)
+
+                win.geometry(f"+{int(x)}+{int(y)}")
+            else:
+                # centrado en pantalla si no hay botón
+                x = max(8, (screen_w - w)//2)
+                y = max(8, (screen_h - h)//4)
+                win.geometry(f"+{int(x)}+{int(y)}")
+        except Exception:
+            pass
+
+        # cerrar al perder foco o al pulsar Escape
+        def _on_focus_out(event=None):
+            try:
+                if self.help_dropdown and self.help_dropdown.winfo_exists():
+                    self.help_dropdown.destroy()
+            except Exception:
+                pass
+            self.help_dropdown = None
+
+        win.bind("<FocusOut>", _on_focus_out)
+        win.bind("<Escape>", lambda e: _on_focus_out())
+
+        # forzar foco al dropdown para poder detectat FocusOut cuando el usuario haga clic fuera
+        try:
+            win.focus_force()
+        except Exception:
+            pass
         scroll_frame = ctk.CTkScrollableFrame(win)
         scroll_frame.pack(fill="both", expand=True, padx=8, pady=8)
 
