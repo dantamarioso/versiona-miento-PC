@@ -1,13 +1,41 @@
 # =================================================================================
-# APLICACIÓN DE GESTIÓN DE BASE DE DATOS "N.I.C.O.L.E" - VERSIÓN MEJORADA
-# =================================================================================
-
+# N.I.C.O.L.E. - Aplicación de gestión de base de datos (archivo principal)
+# ---------------------------------------------------------------------------------
+# Descripción general (comentarios en español):
+# Este archivo contiene la aplicación de escritorio usando customtkinter (CTk).
+# Proporciona funciones para conectarse a MySQL, operaciones CRUD sobre tablas,
+# utilidades de validación y envío de correos, y la interfaz gráfica completa.
+#
+# Estructura principal:
+#  - Importaciones y configuración de entorno
+#  - Funciones utilitarias y de acceso a la base de datos:
+#      * resource_path(relative_path)
+#      * conectar_db()
+#      * init_db()
+#      * validar_email(email)
+#      * validar_contrasena(password)
+#      * enviar_email_cod(destinatario, codigo)
+#      * registrar_historial(usuario, accion, tabla, registro_id, antes, despues)
+#      * obtener_tablas()
+#      * obtener_datos(tabla)
+#  - Pequeñas utilidades UI:
+#      * mostrar_toast(texto, parent)
+#      * _bind_responsive_wrap(win, labels, padding)
+#      * _bind_responsive_button_text(win, button_text_pairs, padding, char_width)
+#  - Widgets personalizados:
+#      * PasswordEntry: entrada con botón para mostrar/ocultar contraseña
+#  - Clase principal App(ctk.CTk): contiene toda la UI y la lógica de la aplicación
+#      * login_usuario() - ventana de login
+#      * _start_loading() / _stop_loading() - indicador animado de carga
+#      * mostrar_bienvenida() - pantalla inicial después de login
+#      * init_ui() - construye la interfaz principal (tabla, toolbar, botones, etc.)
+#      * funciones de exportación, registro de usuarios, recuperación de contraseña,
+#        edición directa de celdas, borrado de registros, historial, ayuda, etc.
+#
 # -------------------------
 # IMPORTACIÓN DE LIBRERÍAS
 # -------------------------
-# Importa todas las bibliotecas necesarias para la interfaz de usuario (customtkinter),
-# la base de datos (pymysql), seguridad (hashlib), y otras funcionalidades.
-# Se usa dotenv para cargar las credenciales desde un archivo .env.
+# Se importan librerías estándar y de terceros necesarias para la app.
 
 import hashlib
 import re
@@ -28,6 +56,7 @@ import openpyxl
 from fpdf import FPDF
 import os,sys
 from dotenv import load_dotenv
+import textwrap
 
 
 
@@ -50,8 +79,7 @@ EMAIL_SENDER = os.getenv("EMAIL_SENDER")
 
 def resource_path(relative_path: str) -> str:
     """
-    Retorna la ruta absoluta del recurso.
-    Funciona tanto en desarrollo (Python normal) como en el ejecutable (PyInstaller).
+    Devuelve la ruta absoluta de un recurso (archivo), considerando si el programa está empaquetado con PyInstaller.
     """
     try:
         # Cuando el programa está empaquetado con PyInstaller, usa la carpeta temporal
@@ -62,7 +90,9 @@ def resource_path(relative_path: str) -> str:
     return os.path.join(base_path, relative_path)
 
 def conectar_db():
-    """Establece y retorna una conexión con la base de datos MySQL."""
+    """
+    Abre y retorna una conexión a la base de datos MySQL usando las variables de entorno. Devuelve None en caso de error.
+    """
     try:
         return pymysql.connect(
             host=os.getenv("DB_HOST"),
@@ -78,9 +108,7 @@ def conectar_db():
 
 def init_db():
     """
-    Inicializa la base de datos.
-    Crea las tablas 'historial', 'usuarios_app' y 'recuperacion_codigos' si no existen.
-    También crea un usuario 'admin' por defecto si no hay ninguno.
+    Crea las tablas necesarias para la aplicación si no existen y asegura que exista un usuario administrador por defecto.
     """
     db = conectar_db()
     if not db:
@@ -134,16 +162,15 @@ def init_db():
             db.close()
 
 def validar_email(email):
-    """Verifica si una cadena tiene un formato de correo electrónico válido."""
+    """
+    Valida sintácticamente una dirección de correo electrónico.
+    """
     regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return re.fullmatch(regex, email)
 
 def validar_contrasena(password):
     """
-    Verifica si una contraseña cumple con los requisitos de seguridad:
-    - Mínimo 8 caracteres
-    - Al menos una letra mayúscula
-    - Al menos un carácter especial
+    Verifica que una contraseña cumpla reglas básicas de seguridad (longitud mínima, mayúscula y carácter especial).
     """
     if len(password) < 8:
         return "La contraseña debe tener al menos 8 caracteres."
@@ -154,7 +181,9 @@ def validar_contrasena(password):
     return None # La contraseña es válida
 
 def enviar_email_cod(destinatario, codigo):
-    """Envía un correo electrónico con un código de verificación."""
+    """
+    Envía un correo SMTP con un código de recuperación al destinatario.
+    """
     if not (EMAIL_HOST and EMAIL_PORT and EMAIL_USER and EMAIL_PASS and EMAIL_SENDER):
         messagebox.showwarning("Configuración de Correo", "La configuración de correo no está completa en el archivo .env.")
         return False
@@ -187,8 +216,7 @@ def enviar_email_cod(destinatario, codigo):
 
 def registrar_historial(usuario, accion, tabla, registro_id, antes="", despues=""):
     """
-    Registra una acción (INSERT, UPDATE, DELETE) en la tabla 'historial'.
-    Enmascara datos sensibles como contraseñas para mayor seguridad.
+    Inserta un registro de auditoría en la tabla 'historial'. Enmascara campos sensibles cuando la tabla afectada es 'usuarios_app'.
     """
     db = conectar_db()
     if not db:
@@ -233,7 +261,9 @@ def registrar_historial(usuario, accion, tabla, registro_id, antes="", despues="
             db.close()
 
 def obtener_tablas():
-    """Obtiene una lista de las tablas de la BD, excluyendo las internas de la app."""
+    """
+    Retorna la lista de tablas de la base de datos excluyendo las tablas internas usadas por la aplicación.
+    """
     db = conectar_db()
     if not db:
         return []
@@ -252,15 +282,16 @@ def obtener_tablas():
             db.close()
 
 def _validar_nombre_tabla(tabla, lista_tablas_permitidas):
-    """Valida que un nombre de tabla esté en la lista de tablas permitidas."""
+    """
+    Comprueba que el nombre de tabla solicitado esté en la lista de tablas permitidas (evita inyección por nombres dinámicos).
+    """
     if tabla in lista_tablas_permitidas:
         return True
     return False
 
 def obtener_datos(tabla):
     """
-    Obtiene las columnas y todas las filas de una tabla específica.
-    Incluye una capa de seguridad para evitar la inyección de SQL.
+    Recupera los nombres de columnas y todas las filas de la tabla indicada tras validar el nombre de la tabla.
     """
     db = conectar_db()
     if not db:
@@ -287,7 +318,9 @@ def obtener_datos(tabla):
             db.close()
 
 def mostrar_toast(texto, parent):
-    """Muestra una notificación emergente temporal (toast) en la pantalla."""
+    """
+    Muestra un pequeño Toplevel temporal con un mensaje (notificación tipo toast).
+    """
     toast = ctk.CTkToplevel(parent)
     toast.overrideredirect(True)
     
@@ -298,6 +331,107 @@ def mostrar_toast(texto, parent):
     ctk.CTkLabel(toast, text=texto, font=ctk.CTkFont(size=14)).pack(expand=True, fill="both", padx=10, pady=5)
     toast.attributes("-topmost", True)
     toast.after(2500, toast.destroy)
+
+
+def _bind_responsive_wrap(win, labels, padding=40):
+    """
+    Vincula el evento de redimensionado para ajustar automáticamente el wraplength de una lista de etiquetas (para interfaces responsivas).
+    """
+    def _on_resize(event=None):
+        try:
+            w = max(150, win.winfo_width() - padding)
+        except Exception:
+            w = 300
+        for lab in labels:
+            try:
+                lab.configure(wraplength=w)
+            except Exception:
+                pass
+
+    win.bind('<Configure>', _on_resize)
+
+def _bind_responsive_button_text(win, button_text_pairs, padding=20, char_width=7):
+    """
+    Ajusta dinámicamente el texto de los botones para que se envuelva en varias líneas cuando el ancho sea pequeño. Detecta iconos iniciales (emoji) y los coloca sobre el texto si se requiere.
+
+    button_text_pairs: iterable de (widget_boton, texto_original)
+    """
+    def _on_resize(event=None):
+    # Para cada botón: calcular el ancho disponible en su padre y envolver el texto
+        for btn, orig in button_text_pairs:
+            try:
+                # preferir el ancho propio del botón si está disponible (más preciso)
+                try:
+                    avail = btn.winfo_width() - padding
+                except Exception:
+                    avail = 0
+
+                if not avail or avail <= 10:
+                    parent = getattr(btn, 'master', win)
+                    try:
+                        avail = parent.winfo_width() - padding
+                    except Exception:
+                        avail = 0
+
+                if not avail or avail <= 0:
+                    avail = max(50, win.winfo_width() - padding)
+
+                # estimar el número de caracteres que caben en una línea
+                # (ajusta char_width para controlar el punto de quiebre)
+                chars = max(1, int(avail / max(4, char_width)))
+
+                # Si el texto original comienza con un icono (emoji/símbolo) seguido
+                # de un espacio, separarlo en `icon` y el resto de texto usando el
+                # primer espacio. Maneja emoji compuestos (por ejemplo 🗑️) que pueden
+                # contener selectores y no tener un espacio fijo en un índice exacto.
+                icon = None
+                rest = orig
+                try:
+                    parts = orig.split(' ', 1)
+                    if len(parts) > 1:
+                        icon = parts[0]
+                        rest = parts[1]
+                except Exception:
+                    icon = None
+                    rest = orig
+
+                # Si hay suficiente espacio, mantener el texto en una sola línea
+                if chars >= len(orig.replace('\n', '')):
+                    out = orig
+                else:
+                    # envolver la parte textual y, si existe un icono, colocarlo encima
+                    wrapped_lines = textwrap.wrap(rest, width=chars) if rest else []
+                    if icon:
+                        if wrapped_lines:
+                            out = icon + "\n" + "\n".join(wrapped_lines)
+                        else:
+                            out = icon
+                    else:
+                        out = "\n".join(textwrap.wrap(orig, width=chars))
+
+                # aplicar el texto envuelto y solicitar centrado
+                btn.configure(text=out)
+                try:
+                    btn.configure(justify="center")
+                except Exception:
+                    pass
+            except Exception:
+                # ignore layout issues during startup
+                pass
+
+    # Vincular al evento de redimensionado de la ventana y al padre de cada
+    # botón para actualizaciones más granulares
+    win.bind('<Configure>', _on_resize)
+    for btn, _ in button_text_pairs:
+        try:
+            btn.master.bind('<Configure>', _on_resize)
+        except Exception:
+            pass
+    # run once to initialize button labels
+    try:
+        _on_resize()
+    except Exception:
+        pass
 
 # -----------------------------------------------
 # CLASES DE LA INTERFAZ DE USUARIO
@@ -331,7 +465,6 @@ class PasswordEntry(ctk.CTkFrame):
             width=30,
             command=self.toggle_show_password,
             fg_color="transparent",
-            hover_color=ctk.CTkEntry(self).cget("fg_color")
         )
         self.show_pass_button.grid(row=0, column=1, padx=(5, 0))
 
@@ -356,8 +489,8 @@ class PasswordEntry(ctk.CTkFrame):
         self.entry.insert(index, string)
 
     def pack(self, **kwargs):
-        super().pack(**kwargs)
-        self.entry.pack_propagate(False)
+        # Let geometry managers control sizing; entry expands via grid
+        return super().pack(**kwargs)
 
     def bind(self, sequence, func, add='+'):
         self.entry.bind(sequence, func, add=add)
@@ -379,19 +512,31 @@ class App(ctk.CTk):
         """Muestra la ventana de login al iniciar la aplicación."""
         win = ctk.CTkToplevel(self)
         win.title("🔐 Login")
-        win.geometry("500x350")
-        win.resizable(False, False)
+        # allow the window to size dynamically; set a sensible minimum
+        win.minsize(480, 320)
+        win.resizable(True, True)
         win.protocol("WM_DELETE_WINDOW", self.destroy)
         win.transient(self)
         win.after(100, win.grab_set)
 
-        ctk.CTkLabel(win, text="Usuario:").pack(pady=(20, 5))
-        entry_user = ctk.CTkEntry(win, placeholder_text="nombre de usuario")
-        entry_user.pack(padx=20, fill="x")
-        ctk.CTkLabel(win, text="Contraseña:").pack(pady=5)
-        
-        entry_pass_frame = PasswordEntry(win)
-        entry_pass_frame.pack(padx=20, fill="x")
+        win.grid_rowconfigure(0, weight=1)
+        win.grid_rowconfigure(1, weight=1)
+        win.grid_rowconfigure(2, weight=1)
+        win.grid_columnconfigure(0, weight=1)
+
+        frame = ctk.CTkFrame(win)
+        frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_rowconfigure(1, weight=1)
+        frame.grid_rowconfigure(2, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(frame, text="Usuario:").grid(row=0, column=0, sticky="ew", pady=(20, 5))
+        entry_user = ctk.CTkEntry(frame, placeholder_text="nombre de usuario")
+        entry_user.grid(row=1, column=0, sticky="ew", padx=10)
+        ctk.CTkLabel(frame, text="Contraseña:").grid(row=2, column=0, sticky="ew", pady=5)
+        entry_pass_frame = PasswordEntry(frame)
+        entry_pass_frame.grid(row=3, column=0, sticky="ew", padx=10)
 
         def intentar(event=None):
             u = entry_user.get()
@@ -419,35 +564,143 @@ class App(ctk.CTk):
                 messagebox.showerror("Error de Login", f"Ocurrió un error:\n{err}", parent=win)
             finally:
                 if db.open: cur.close(); db.close()
-        
-        btn_frame = ctk.CTkFrame(win, fg_color="transparent")
-        btn_frame.pack(pady=20, padx=20, fill="x")
-        ctk.CTkButton(btn_frame, text="Entrar", command=intentar).pack(side="left", expand=True)
-        ctk.CTkButton(btn_frame, text="Olvidé mi contraseña", command=self.recuperar_contrasena, fg_color="gray", hover_color="darkgray").pack(side="right", expand=True)
+
+        btn_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        btn_frame.grid(row=4, column=0, sticky="ew", pady=12, padx=10)
+        btn_frame.grid_columnconfigure(0, weight=1)
+        btn_frame.grid_columnconfigure(1, weight=1)
+        ctk.CTkButton(btn_frame, text="Entrar", command=intentar).grid(row=0, column=0, sticky="ew", padx=5)
+        ctk.CTkButton(btn_frame, text="Olvidé mi contraseña", command=self.recuperar_contrasena, fg_color="gray", hover_color="darkgray").grid(row=0, column=1, sticky="ew", padx=5)
 
         entry_user.bind('<Return>', intentar)
         entry_pass_frame.bind('<Return>', intentar)
+
+    # --- Loading indicator helpers ---
+    def _start_loading(self, parent=None, text="Cargando..."):
+        """Show a small animated loading label (spinner) overlaying the parent or main window.
+        Prefer an in-window overlay frame (so it's always visible), fallback to Toplevel on error.
+        """
+        if not parent:
+            parent = self
+        # if already showing, skip
+        try:
+            if hasattr(self, '_loading_widget') and self._loading_widget.winfo_exists():
+                return
+        except Exception:
+            pass
+
+        # Try in-window overlay first
+        try:
+            parent.update_idletasks()
+            w = 260
+            h = 64
+            # create overlay frame centered in parent
+            self._loading_widget = ctk.CTkFrame(parent, corner_radius=8, fg_color="#2b2f31")
+            self._loading_widget.place(relx=0.5, rely=0.5, anchor='center', width=w, height=h)
+            self._loading_widget.lift()
+
+            self._loading_label = ctk.CTkLabel(self._loading_widget, text=text, font=ctk.CTkFont(size=12))
+            self._loading_label.pack(side='left', padx=(12,6), pady=8)
+            self._loading_spinner = ctk.CTkLabel(self._loading_widget, text="", font=ctk.CTkFont(size=14))
+            self._loading_spinner.pack(side='right', padx=(6,12))
+
+            self._loading_frames = ['⣾','⣽','⣻','⢿','⡿','⣟','⣯','⣷']
+            self._loading_frame_index = 0
+
+            def _animate():
+                try:
+                    self._loading_spinner.configure(text=self._loading_frames[self._loading_frame_index])
+                    self._loading_frame_index = (self._loading_frame_index + 1) % len(self._loading_frames)
+                    self._loading_widget.after(120, _animate)
+                except Exception:
+                    return
+
+            _animate()
+            return
+        except Exception:
+            # fallback to Toplevel if in-window overlay fails
+            pass
+
+        try:
+            self._loading_widget = ctk.CTkToplevel(parent)
+            self._loading_widget.overrideredirect(True)
+            self._loading_widget.attributes('-topmost', True)
+            px = parent.winfo_rootx()
+            py = parent.winfo_rooty()
+            pw = parent.winfo_width()
+            ph = parent.winfo_height()
+            w = 220
+            h = 50
+            try:
+                self._loading_widget.geometry(f"{w}x{h}+{px + max(0,(pw - w)//2)}+{py + max(0,(ph - h)//2)}")
+            except Exception:
+                self._loading_widget.geometry(f"{w}x{h}")
+
+            frame = ctk.CTkFrame(self._loading_widget)
+            frame.pack(expand=True, fill='both')
+            self._loading_label = ctk.CTkLabel(frame, text=text, font=ctk.CTkFont(size=12))
+            self._loading_label.pack(side='left', padx=(12,6), pady=8)
+            self._loading_spinner = ctk.CTkLabel(frame, text="", font=ctk.CTkFont(size=14))
+            self._loading_spinner.pack(side='right', padx=(6,12))
+
+            self._loading_frames = ['⣾','⣽','⣻','⢿','⡿','⣟','⣯','⣷']
+            self._loading_frame_index = 0
+
+            def _animate2():
+                try:
+                    self._loading_spinner.configure(text=self._loading_frames[self._loading_frame_index])
+                    self._loading_frame_index = (self._loading_frame_index + 1) % len(self._loading_frames)
+                    self._loading_widget.after(120, _animate2)
+                except Exception:
+                    return
+
+            _animate2()
+        except Exception:
+            pass
+
+    def _stop_loading(self):
+        try:
+            if hasattr(self, '_loading_widget') and self._loading_widget.winfo_exists():
+                # if placed in window, use place_forget; else destroy
+                try:
+                    self._loading_widget.place_forget()
+                except Exception:
+                    try:
+                        self._loading_widget.destroy()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
 
     def mostrar_bienvenida(self):
         """Muestra una ventana de bienvenida después de un login exitoso."""
         self.withdraw()
         win = ctk.CTkToplevel(self)
         win.title("🎉 Bienvenida")
-        win.geometry("400x200")
-        win.resizable(False, False)
+        win.minsize(360, 220)
+        win.resizable(True, True)
         win.protocol("WM_DELETE_WINDOW", self.destroy)
         win.transient(self)
         win.after(10, win.grab_set)
 
-        ctk.CTkLabel(win, text=f"¡Bienvenido, {self.usuario}!", font=ctk.CTkFont(size=24, weight="bold")).pack(pady=(30, 10))
-        ctk.CTkLabel(win, text="Has iniciado sesión correctamente.", justify="center").pack()
+        win.grid_rowconfigure(0, weight=1)
+        win.grid_columnconfigure(0, weight=1)
+        frame = ctk.CTkFrame(win)
+        frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_rowconfigure(1, weight=1)
+        frame.grid_rowconfigure(2, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(frame, text=f"¡Bienvenido, {self.usuario}!", font=ctk.CTkFont(size=24, weight="bold")).grid(row=0, column=0, sticky="ew", pady=(30, 10))
+        ctk.CTkLabel(frame, text="Has iniciado sesión correctamente.", justify="center").grid(row=1, column=0, sticky="ew")
 
         def continuar():
             win.destroy()
             self.deiconify()
             self.init_ui()
 
-        ctk.CTkButton(win, text="👉 Continuar", command=continuar).pack(pady=30)
+        ctk.CTkButton(frame, text="👉 Continuar", command=continuar).grid(row=2, column=0, sticky="ew", pady=30)
         win.bind('<Return>', lambda event: continuar())
 
     def cerrar_sesion(self):
@@ -462,9 +715,16 @@ class App(ctk.CTk):
     def init_ui(self):
         """Inicializa la interfaz principal de la aplicación."""
         self.title(f"N.I.C.O.L.E – Sesión de {self.usuario}")
-        self.state('zoomed')
+        # Start maximized where available but allow restore
+        try:
+            self.state('zoomed')
+        except Exception:
+            pass
+
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1)
+        self.grid_rowconfigure(2, weight=10)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(3, weight=1)
 
         try:
             self.brain_icon = ctk.CTkImage(Image.open(resource_path("brain_icon.png")), size=(40, 40))
@@ -473,33 +733,38 @@ class App(ctk.CTk):
             self.brain_icon = None
             self.help_icon = None
             messagebox.showwarning("Iconos no encontrados", "Asegúrate de tener los iconos necesarios.")
-        
+
         top_frame = ctk.CTkFrame(self)
-        top_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
-        top_frame.grid_columnconfigure(1, weight=1)
+        top_frame.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
+        top_frame.grid_columnconfigure(0, weight=1)
+        top_frame.grid_columnconfigure(1, weight=10)
+        top_frame.grid_columnconfigure(2, weight=2)
+        top_frame.grid_columnconfigure(3, weight=1)
 
-        ctk.CTkLabel(top_frame, text="N.I.C.O.L.E", image=self.brain_icon, compound="left", font=ctk.CTkFont(size=22, weight="bold")).grid(row=0, column=0, padx=10, pady=10)
+        ctk.CTkLabel(top_frame, text="N.I.C.O.L.E", image=self.brain_icon, compound="left", font=ctk.CTkFont(size=22, weight="bold")).grid(row=0, column=0, padx=10, pady=10, sticky="ew")
 
-        self.busc = ctk.CTkEntry(top_frame, placeholder_text="🔍 Buscar en la tabla actual…", height=35)
-        self.busc.grid(row=0, column=1, sticky="ew", padx=10)
+        # search entry should expand naturally
+        self.busc = ctk.CTkEntry(top_frame, placeholder_text="🔍 Buscar en la tabla actual…")
+        self.busc.grid(row=0, column=1, sticky="ew", padx=6)
         self.busc.bind("<KeyRelease>", self.buscar)
 
         frame_selector = ctk.CTkFrame(top_frame, fg_color="transparent")
-        frame_selector.grid(row=0, column=2, padx=10)
-        ctk.CTkLabel(frame_selector, text="Tabla:").pack(side="left", padx=(0, 5))
+        frame_selector.grid(row=0, column=2, padx=6, sticky="ew")
+        frame_selector.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(frame_selector, text="Tabla:").grid(row=0, column=0, sticky="ew", padx=(0, 5))
         tablas = obtener_tablas()
-        self.combo = ctk.CTkOptionMenu(frame_selector, values=tablas if tablas else ["No hay tablas"], command=self.cargar_tabla, height=35)
-        self.combo.pack(side="left")
+        self.combo = ctk.CTkOptionMenu(frame_selector, values=tablas if tablas else ["No hay tablas"], command=self.cargar_tabla)
+        self.combo.grid(row=0, column=1, sticky="ew")
 
         # Botón de Ayuda en la esquina superior derecha
         btn_help = ctk.CTkButton(top_frame, text="", image=self.help_icon, width=40, command=self.mostrar_ayuda)
-        btn_help.grid(row=0, column=3, padx=10, pady=10, sticky="e")
+        btn_help.grid(row=0, column=3, padx=6, pady=6, sticky="e")
 
         ttk_frame = ctk.CTkFrame(self)
-        ttk_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0, 10))
+        ttk_frame.grid(row=2, column=0, sticky="nsew", padx=8, pady=(0, 8))
         ttk_frame.grid_rowconfigure(0, weight=1)
         ttk_frame.grid_columnconfigure(0, weight=1)
-        
+
         # Estilos de la tabla (ttk.Treeview)
         style = ttk.Style()
         style.theme_use("default")
@@ -518,32 +783,60 @@ class App(ctk.CTk):
         self.tree.bind("<Double-1>", self.editar_celda)
 
         bottom_frame = ctk.CTkFrame(self)
-        bottom_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
-        bottom_frame.grid_columnconfigure((1, 3), weight=1)
-        
+        bottom_frame.grid(row=3, column=0, sticky="ew", padx=8, pady=8)
+        bottom_frame.grid_columnconfigure(0, weight=2)
+        bottom_frame.grid_columnconfigure(2, weight=2)
+        bottom_frame.grid_columnconfigure(4, weight=2)
         # Botones de acción (Añadir, Borrar)
         frame_acciones = ctk.CTkFrame(bottom_frame, fg_color="transparent")
-        frame_acciones.grid(row=0, column=0)
+        frame_acciones.grid(row=0, column=0, sticky="ew")
+        frame_acciones.grid_columnconfigure(0, weight=1)
+        frame_acciones.grid_columnconfigure(1, weight=1)
         self.btn_add = ctk.CTkButton(frame_acciones, text="➕ Añadir", command=self.abrir_form)
-        self.btn_add.pack(side="left", padx=5)
-        self.btn_del = ctk.CTkButton(frame_acciones, text="🗑️ Borrar", fg_color="#D32F2F", hover_color="#B71C1C", command=self.eliminar_registro)
-        self.btn_del.pack(side="left", padx=5)
+        self.btn_add.grid(row=0, column=0, sticky="ew", padx=5)
+        # Make the delete button center its content and allow vertical wrapping
+        self.btn_del = ctk.CTkButton(
+            frame_acciones,
+            text="🗑️ Borrar",
+            fg_color="#D32F2F",
+            hover_color="#B71C1C",
+            command=self.eliminar_registro,
+            anchor='center'
+        )
+        # add a bit more internal padding so the icon doesn't feel cramped when
+        # it wraps above the label on narrow windows
+        try:
+            self.btn_del.configure(padx=8, pady=6)
+        except Exception:
+            pass
+        self.btn_del.grid(row=0, column=1, sticky="ew", padx=5)
 
         # Botones de gestión (Recargar, Historial, Exportar)
         frame_gestion = ctk.CTkFrame(bottom_frame, fg_color="transparent")
-        frame_gestion.grid(row=0, column=2)
-        ctk.CTkButton(frame_gestion, text="🔄 Recargar", command=self.cargar_tabla_actual).pack(side="left", padx=5)
-        ctk.CTkButton(frame_gestion, text="🕵️ Historial", command=self.ver_historial).pack(side="left", padx=5)
-        ctk.CTkButton(frame_gestion, text="📦 Exportar", command=self.iniciar_exportacion).pack(side="left", padx=5)
-        
+        frame_gestion.grid(row=0, column=2, sticky="ew")
+        frame_gestion.grid_columnconfigure(0, weight=1)
+        frame_gestion.grid_columnconfigure(1, weight=1)
+        frame_gestion.grid_columnconfigure(2, weight=1)
+        # keep references so we can update their text responsively
+        recargar_btn = ctk.CTkButton(frame_gestion, text="🔄 Recargar", command=self.cargar_tabla_actual)
+        recargar_btn.grid(row=0, column=0, sticky="ew", padx=5)
+        historial_btn = ctk.CTkButton(frame_gestion, text="🕵️ Historial", command=self.ver_historial)
+        historial_btn.grid(row=0, column=1, sticky="ew", padx=5)
+        export_btn = ctk.CTkButton(frame_gestion, text="📦 Exportar", command=self.iniciar_exportacion)
+        export_btn.grid(row=0, column=2, sticky="ew", padx=5)
+
         # Botones de sesión (Usuarios, Cambiar datos, Salir)
         frame_sesion = ctk.CTkFrame(bottom_frame, fg_color="transparent")
-        frame_sesion.grid(row=0, column=4)
+        frame_sesion.grid(row=0, column=4 , sticky="ew")
+        frame_sesion.grid_columnconfigure(0, weight=1)
+        frame_sesion.grid_columnconfigure(1, weight=1)
+        frame_sesion.grid_columnconfigure(2, weight=1)
         self.btn_user = ctk.CTkButton(frame_sesion, text="👤 Nuevos usuarios", command=self.registrar_usuario)
-        self.btn_user.pack(side="left", padx=5)
+        self.btn_user.grid(row=0, column=0, sticky="ew", padx=5)
         self.btn_change_data = ctk.CTkButton(frame_sesion, text="⚙️ Cambiar mis datos", command=self.cambiar_datos)
-        self.btn_change_data.pack(side="left", padx=5)
-        ctk.CTkButton(frame_sesion, text="🚪 Salir", command=self.cerrar_sesion).pack(side="left", padx=5)
+        self.btn_change_data.grid(row=0, column=1, sticky="ew", padx=5)
+        exit_btn = ctk.CTkButton(frame_sesion, text="🚪 Salir", command=self.cerrar_sesion)
+        exit_btn.grid(row=0, column=2, sticky="ew", padx=5)
 
         # Deshabilita los botones de administrador si el usuario no es admin
         if not self.is_admin:
@@ -555,6 +848,21 @@ class App(ctk.CTk):
         if tablas:
             self.combo.set(tablas[0])
             self.cargar_tabla(tablas[0])
+
+        # Make bottom toolbar buttons wrap their labels when space is constrained
+        try:
+            _bind_responsive_button_text(self, [
+                (self.btn_add, '➕ Añadir'),
+                (self.btn_del, '🗑️ Borrar'),
+                (recargar_btn, '🔄 Recargar'),
+                (historial_btn, '🕵️ Historial'),
+                (export_btn, '📦 Exportar'),
+                (self.btn_user, '👤 Nuevos usuarios'),
+                (self.btn_change_data, '⚙️ Cambiar mis datos'),
+                (exit_btn, '🚪 Salir'),
+            ])
+        except Exception:
+            pass
 
     def iniciar_exportacion(self):
         """Inicia el proceso de exportación de datos a diferentes formatos."""
@@ -647,24 +955,29 @@ class App(ctk.CTk):
     def registrar_usuario(self):
         """Muestra una ventana para que un administrador pueda crear nuevos usuarios."""
         if not self.is_admin: return
-
         win = ctk.CTkToplevel(self)
         win.title("➕ Nuevo Usuario")
-        win.geometry("450x450")
+        win.minsize(380, 320)
         win.resizable(True, True)
         win.transient(self)
         win.protocol("WM_DELETE_WINDOW", win.destroy)
         win.after(10, win.grab_set)
 
-        ctk.CTkLabel(win, text="Nombre de Usuario:", wraplength=400).pack(pady=(20, 5))
-        e_user = ctk.CTkEntry(win, width=350)
-        e_user.pack(padx=20, fill="x")
-        ctk.CTkLabel(win, text="Correo Electrónico:", wraplength=400).pack(pady=5)
-        e_email = ctk.CTkEntry(win, width=350)
-        e_email.pack(padx=20, fill="x")
-        ctk.CTkLabel(win, text="Contraseña:", wraplength=400).pack(pady=5)
+        lbl_user = ctk.CTkLabel(win, text="Nombre de Usuario:")
+        lbl_user.pack(pady=(14, 4), anchor="w", padx=16)
+        e_user = ctk.CTkEntry(win)
+        e_user.pack(padx=16, fill="x")
+
+        lbl_email = ctk.CTkLabel(win, text="Correo Electrónico:")
+        lbl_email.pack(pady=(8, 4), anchor="w", padx=16)
+        e_email = ctk.CTkEntry(win)
+        e_email.pack(padx=16, fill="x")
+
+        lbl_pass = ctk.CTkLabel(win, text="Contraseña:")
+        lbl_pass.pack(pady=(8, 4), anchor="w", padx=16)
         e_pass_frame = PasswordEntry(win)
-        e_pass_frame.pack(padx=20, fill="x")
+        e_pass_frame.pack(padx=16, fill="x")
+
         val_admin = ctk.CTkCheckBox(win, text="Otorgar privilegios de Administrador")
         val_admin.pack(pady=10)
 
@@ -673,31 +986,31 @@ class App(ctk.CTk):
             u = e_user.get().strip()
             p = e_pass_frame.get().strip()
             e = e_email.get().strip()
-            
+
             if not u or not p or not e:
                 return messagebox.showwarning("Campos incompletos", "Completa todos los campos.", parent=win)
-            
+
             if not validar_email(e):
                 return messagebox.showwarning("Correo inválido", "Formato de correo inválido.", parent=win)
-            
+
             validation_error = validar_contrasena(p)
             if validation_error:
                 return messagebox.showwarning("Contraseña débil", validation_error, parent=win)
 
             h = hashlib.sha256(p.encode()).hexdigest()
             esadm = val_admin.get()
-            
+
             db = conectar_db()
             if not db: return
-            
+
             try:
                 cur = db.cursor()
                 cur.execute("INSERT INTO usuarios_app (username, password_hash, email, es_admin) VALUES (%s, %s, %s, %s)", (u, h, e, esadm))
                 db.commit()
-                
+
                 vals_dict = {"username": u, "email": e, "es_admin": esadm, "password_hash": "***"}
                 registrar_historial(self.usuario, "INSERT", "usuarios_app", u, "", str(vals_dict))
-                
+
                 messagebox.showinfo("Éxito", "Usuario creado correctamente.", parent=win)
                 win.destroy()
             except IntegrityError:
@@ -705,23 +1018,27 @@ class App(ctk.CTk):
             except MySQLError as err:
                 messagebox.showerror("Error", f"No se pudo crear el usuario:\n{err}", parent=win)
             finally:
-                if db.open: cur.close(); db.close()
+                if db.open:
+                    cur.close()
+                    db.close()
 
         ctk.CTkButton(win, text="💾 Guardar Usuario", command=guardar_user).pack(pady=20)
+        _bind_responsive_wrap(win, [lbl_user, lbl_email, lbl_pass])
 
     def recuperar_contrasena(self):
         """Muestra la ventana para recuperar la contraseña del usuario."""
         win = ctk.CTkToplevel(self)
         win.title("🔑 Recuperar Contraseña")
-        win.geometry("350x300")
+        win.minsize(360, 260)
         win.resizable(False, False)
         win.transient(self)
         win.protocol("WM_DELETE_WINDOW", win.destroy)
         win.after(10, win.grab_set)
-        
+
         frame1 = ctk.CTkFrame(win)
-        frame1.pack(fill="both", expand=True, padx=20, pady=20)
-        ctk.CTkLabel(frame1, text="Ingresa tu correo o nombre de usuario:").pack(pady=(20, 5))
+        frame1.pack(fill="both", expand=True, padx=12, pady=12)
+        lbl_ident = ctk.CTkLabel(frame1, text="Ingresa tu correo o nombre de usuario:")
+        lbl_ident.pack(pady=(16, 6), anchor="w")
         entry = ctk.CTkEntry(frame1)
         entry.pack(fill="x")
 
@@ -732,7 +1049,7 @@ class App(ctk.CTk):
         def enviar_codigo():
             """Envía un código de recuperación por correo electrónico."""
             identificador = entry.get().strip()
-            if not identificador: 
+            if not identificador:
                 return messagebox.showwarning("Campo requerido", "Por favor, ingresa tu usuario o correo.", parent=win)
 
             db = conectar_db()
@@ -743,11 +1060,11 @@ class App(ctk.CTk):
                 res = cur.fetchone()
                 if not res:
                     return messagebox.showwarning("No encontrado", "Usuario o correo no encontrado.", parent=win)
-                
+
                 email = res[0]
                 username = res[1]
                 codigo = "".join(random.choices("0123456789", k=6))
-                
+
                 if enviar_email_cod(email, codigo):
                     expiracion = datetime.now(timezone.utc) + timedelta(minutes=15)
                     cur.execute("DELETE FROM recuperacion_codigos WHERE username=%s", (username,))
@@ -760,33 +1077,40 @@ class App(ctk.CTk):
             except MySQLError as err:
                 messagebox.showerror("Error de BD", f"Ocurrió un error:\n{err}", parent=win)
             finally:
-                if db.open: cur.close(); db.close()
+                if db.open:
+                    cur.close()
+                    db.close()
 
         def iniciar_resend_timer():
             resend_seconds[0] = 180
-            resend_btn.configure(state="disabled")
+            if resend_btn:
+                resend_btn.configure(state="disabled")
             actualizar_timer()
 
         def actualizar_timer():
             if resend_seconds[0] > 0:
-                resend_timer_label.configure(text=f"Puedes reenviar en {resend_seconds[0]} segundos")
+                if resend_timer_label:
+                    resend_timer_label.configure(text=f"Puedes reenviar en {resend_seconds[0]} segundos")
                 resend_seconds[0] -= 1
                 win.after(1000, actualizar_timer)
             else:
-                resend_btn.configure(state="normal")
-                resend_timer_label.configure(text="Puedes volver a enviar el código")
+                if resend_btn:
+                    resend_btn.configure(state="normal")
+                if resend_timer_label:
+                    resend_timer_label.configure(text="Puedes volver a enviar el código")
 
-        ctk.CTkButton(frame1, text="Enviar Código", command=enviar_codigo).pack(pady=20)
+        ctk.CTkButton(frame1, text="Enviar Código", command=enviar_codigo).pack(pady=14)
 
         frame2 = ctk.CTkFrame(win)
-        ctk.CTkLabel(frame2, text="Ingresa el código:", wraplength=300).pack(pady=(20, 5))
+        lbl_code = ctk.CTkLabel(frame2, text="Ingresa el código:")
+        lbl_code.pack(pady=(16, 6), anchor="w", padx=12)
         entry_codigo = ctk.CTkEntry(frame2, placeholder_text="Código de 6 dígitos")
-        entry_codigo.pack(fill="x", padx=20)
-        ctk.CTkLabel(frame2, text="Nueva Contraseña:").pack(pady=5)
+        entry_codigo.pack(fill="x", padx=12)
+        lbl_newp = ctk.CTkLabel(frame2, text="Nueva Contraseña:")
+        lbl_newp.pack(pady=(8, 4), anchor="w", padx=12)
         entry_new_pass_frame = PasswordEntry(frame2)
-        entry_new_pass_frame.pack(fill="x", padx=20)
+        entry_new_pass_frame.pack(fill="x", padx=12)
 
-        # Botón de confirmar código (no se bloquea)
         def actualizar_contrasena():
             """Actualiza la contraseña del usuario si el código es válido."""
             codigo = entry_codigo.get().strip()
@@ -812,7 +1136,7 @@ class App(ctk.CTk):
                     cur.execute("UPDATE usuarios_app SET password_hash=%s WHERE username=%s", (h, res[0]))
                     cur.execute("DELETE FROM recuperacion_codigos WHERE username=%s", (res[0],))
                     db.commit()
-                    
+
                     registrar_historial("Sistema", "UPDATE", "usuarios_app", res[0], "password_hash: ****", "password_hash: ****")
 
                     messagebox.showinfo("Éxito", "Contraseña actualizada con éxito.", parent=win)
@@ -822,29 +1146,32 @@ class App(ctk.CTk):
             except MySQLError as err:
                 messagebox.showerror("Error de BD", f"Ocurrió un error:\n{err}", parent=win)
             finally:
-                if db.open: cur.close(); db.close()
+                if db.open:
+                    cur.close()
+                    db.close()
 
         btn_confirmar = ctk.CTkButton(frame2, text="Confirmar código y actualizar contraseña", command=actualizar_contrasena)
-        btn_confirmar.pack(pady=10)
+        btn_confirmar.pack(pady=10, padx=12)
 
-        # Botón de volver a enviar código (se bloquea)
         resend_btn = ctk.CTkButton(frame2, text="Volver a enviar código", command=lambda: [enviar_codigo(), iniciar_resend_timer()])
-        resend_btn.pack(pady=(10, 0))
+        resend_btn.pack(pady=(10, 0), padx=12)
         resend_timer_label = ctk.CTkLabel(frame2, text="")
-        resend_timer_label.pack(pady=(0, 10))
+        resend_timer_label.pack(pady=(4, 12), padx=12)
+        _bind_responsive_wrap(win, [lbl_ident, lbl_code, lbl_newp])
 
     def cambiar_datos(self):
         """Muestra una ventana para que el usuario cambie su correo o contraseña."""
         win = ctk.CTkToplevel(self)
         win.title("⚙️ Cambiar Mis Datos")
-        win.geometry("450x400")
+        win.minsize(420, 360)
         win.resizable(True, True)
         win.transient(self)
         win.protocol("WM_DELETE_WINDOW", win.destroy)
         win.after(10, win.grab_set)
 
         db = conectar_db()
-        if not db: return
+        if not db:
+            return
         email_actual = ""
         try:
             cur = db.cursor()
@@ -855,16 +1182,21 @@ class App(ctk.CTk):
         except MySQLError:
             email_actual = ""
         finally:
-            if db.open: cur.close(); db.close()
+            if db.open:
+                cur.close()
+                db.close()
 
-        ctk.CTkLabel(win, text=f"Usuario: {self.usuario}", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(20, 10))
-        ctk.CTkLabel(win, text="Nuevo Correo Electrónico: (dejar igual si no se quiere cambiar el correo electrónico)", wraplength=400).pack(pady=(10, 5))
-        e_email = ctk.CTkEntry(win, width=350)
+        lbl_user = ctk.CTkLabel(win, text=f"Usuario: {self.usuario}", font=ctk.CTkFont(size=16, weight="bold"))
+        lbl_user.pack(pady=(14, 8), anchor="w", padx=16)
+        lbl_email = ctk.CTkLabel(win, text="Nuevo Correo Electrónico: (dejar igual si no se quiere cambiar el correo electrónico)")
+        lbl_email.pack(pady=(8, 4), anchor="w", padx=16)
+        e_email = ctk.CTkEntry(win)
         e_email.insert(0, email_actual)
-        e_email.pack(padx=20, fill="x")
-        ctk.CTkLabel(win, text="Nueva Contraseña: (Deja en blanco para no cambiarla)", wraplength=400).pack(pady=5)
+        e_email.pack(padx=16, fill="x")
+        lbl_pass = ctk.CTkLabel(win, text="Nueva Contraseña: (Deja en blanco para no cambiarla)")
+        lbl_pass.pack(pady=(8, 4), anchor="w", padx=16)
         e_pass_frame = PasswordEntry(win)
-        e_pass_frame.pack(padx=20, fill="x")
+        e_pass_frame.pack(padx=16, fill="x")
 
         def actualizar_datos():
             """Actualiza el correo y/o la contraseña del usuario en la base de datos."""
@@ -875,7 +1207,8 @@ class App(ctk.CTk):
                 return messagebox.showwarning("Correo inválido", "Formato de correo inválido.", parent=win)
 
             db = conectar_db()
-            if not db: return
+            if not db:
+                return
             try:
                 cur = db.cursor()
                 if new_pass:
@@ -888,7 +1221,7 @@ class App(ctk.CTk):
                 else:
                     cur.execute("UPDATE usuarios_app SET email=%s WHERE username=%s", (new_email, self.usuario))
                     registrar_historial(self.usuario, "UPDATE", "usuarios_app", self.usuario, f"email: {email_actual}", f"email: {new_email}")
-                
+
                 db.commit()
                 messagebox.showinfo("Éxito", "Datos actualizados correctamente.", parent=win)
                 win.destroy()
@@ -897,31 +1230,45 @@ class App(ctk.CTk):
             except MySQLError as err:
                 messagebox.showerror("Error", f"No se pudieron actualizar los datos:\n{err}", parent=win)
             finally:
-                if db.open: cur.close(); db.close()
+                if db.open:
+                    cur.close()
+                    db.close()
 
-        ctk.CTkButton(win, text="💾 Guardar Cambios", command=actualizar_datos).pack(pady=20)
+        ctk.CTkButton(win, text="💾 Guardar Cambios", command=actualizar_datos).pack(pady=16)
+        _bind_responsive_wrap(win, [lbl_user, lbl_email, lbl_pass])
 
     def cargar_tabla(self, tabla):
-        """Carga los datos de la tabla seleccionada en el Treeview."""
+        """
+        Carga los datos de la tabla seleccionada en el Treeview.
+        """
+        # Si no hay tablas, limpia el Treeview
         if tabla == "No hay tablas":
             self.tree.delete(*self.tree.get_children())
             self.tree["columns"] = []
             return
-        
-        # Muestra un indicador de carga
-        self.loading_label = ctk.CTkLabel(self, text="Cargando...", font=ctk.CTkFont(size=16))
-        self.loading_label.grid(row=2, column=0, sticky="nsew")
+        # Muestra el overlay animado de carga
+        try:
+            self._start_loading(parent=self)
+        except Exception:
+            pass
+
         self.update_idletasks()
-            
+
+        # Elimina los datos actuales de la tabla
         self.tree.delete(*self.tree.get_children())
-        self.col, rows = obtener_datos(tabla)
-        
-        # Elimina el indicador de carga
-        self.loading_label.grid_forget()
-        
+        try:
+            # Obtiene columnas y filas de la tabla seleccionada
+            self.col, rows = obtener_datos(tabla)
+        finally:
+            try:
+                self._stop_loading()
+            except Exception:
+                pass
+        # Si no hay columnas, termina
         if not self.col:
             return
 
+        # Configura el Treeview con las nuevas columnas y datos
         self.table = tabla
         self.tree["columns"] = self.col
         self.tree["show"] = "headings"
@@ -950,10 +1297,9 @@ class App(ctk.CTk):
         """Abre un formulario para añadir un nuevo registro a la tabla actual."""
         if not hasattr(self, "table"):
             return mostrar_toast("Selecciona una tabla primero", self)
-
         win = ctk.CTkToplevel(self)
         win.title(f"➕ Agregar registro a {self.table}")
-        win.geometry("500x500")
+        win.minsize(420, 420)
         win.resizable(True, True)
         win.transient(self)
         win.protocol("WM_DELETE_WINDOW", win.destroy)
@@ -966,22 +1312,23 @@ class App(ctk.CTk):
         entries = {}
 
         for c in cols_no_id:
-            ctk.CTkLabel(scroll, text=f"{c}:", wraplength=400).pack(anchor="w", padx=5, pady=(10, 0))
+            lbl = ctk.CTkLabel(scroll, text=f"{c}:")
+            lbl.pack(anchor="w", padx=6, pady=(8, 0))
             if "fecha" in c.lower():
-                ent = ctk.CTkEntry(scroll, width=400)
+                ent = ctk.CTkEntry(scroll)
                 ent.insert(0, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                 ent.configure(state="readonly")
                 ent.pack(fill="x", padx=5)
                 entries[c] = ent
             elif "pass" in c.lower() and "password_hash" not in c.lower():
-                ent = PasswordEntry(scroll, width=400)
-                ent.pack(fill="x", padx=5)
+                ent = PasswordEntry(scroll)
+                ent.pack(fill="x", padx=6)
                 entries[c] = ent
             else:
-                ent = ctk.CTkEntry(scroll, width=400)
-                ent.pack(fill="x", padx=5)
+                ent = ctk.CTkEntry(scroll)
+                ent.pack(fill="x", padx=6)
                 entries[c] = ent
-        
+
         def insertar():
             """Inserta el nuevo registro en la base de datos."""
             vals_dict = {}
@@ -995,10 +1342,10 @@ class App(ctk.CTk):
                 vals_dict[c] = v
 
             vals = list(vals_dict.values())
-            
+
             if any(not str(x).strip() for x in vals):
                 return messagebox.showwarning("Campos incompletos", "Completa todos los campos.", parent=win)
-            
+
             db = conectar_db()
             if not db: return
 
@@ -1009,10 +1356,10 @@ class App(ctk.CTk):
                 cur.execute(query, vals)
                 rid = cur.lastrowid
                 db.commit()
-                
+
                 if "password_hash" in vals_dict:
                     vals_dict["password_hash"] = "***"
-                
+
                 registrar_historial(self.usuario, "INSERT", self.table, rid, "", str(vals_dict))
                 win.destroy()
                 self.cargar_tabla_actual()
@@ -1020,36 +1367,42 @@ class App(ctk.CTk):
             except MySQLError as err:
                 messagebox.showerror("Error al Insertar", f"No se pudo guardar:\n{err}", parent=win)
             finally:
-                if db.open: cur.close(); db.close()
+                if db.open:
+                    cur.close()
+                    db.close()
 
-        ctk.CTkButton(scroll, text="💾 Insertar Registro", command=insertar).pack(pady=20, padx=5)
+        ctk.CTkButton(scroll, text="💾 Insertar Registro", command=insertar).pack(pady=16, padx=6)
 
     def eliminar_registro(self):
-        """Elimina un registro seleccionado del Treeview y la base de datos."""
+        """
+        Elimina un registro seleccionado del Treeview y la base de datos.
+        """
+        # Obtiene el registro seleccionado
         sel = self.tree.focus()
         if not sel: return
 
+        # Extrae los valores y la clave primaria
         r = self.tree.item(sel)["values"]
         pk_col_name = self.col[0]
         pk_value = r[0]
         before = str(dict(zip(self.col, r)))
 
-        # Se pide confirmación al usuario antes de borrar (mejora de UX)
+        # Pide confirmación al usuario antes de borrar
         if messagebox.askyesno("Confirmar Borrado", f"¿Seguro que quieres eliminar el registro con {pk_col_name} = {pk_value}?"):
             db = conectar_db()
             if not db: return
-            
             try:
                 cur = db.cursor()
-                # Se construye la consulta de forma segura
+                # Ejecuta el borrado seguro
                 cur.execute(f"DELETE FROM `{self.table}` WHERE `{pk_col_name}`=%s", (pk_value,))
                 db.commit()
-                
+                # Registra el borrado en el historial
                 registrar_historial(self.usuario, "DELETE", self.table, pk_value, before, "")
+                # Recarga la tabla y muestra mensaje de éxito
                 self.cargar_tabla_actual()
                 messagebox.showinfo("Éxito", "Registro eliminado.", parent=self)
             except IntegrityError as e:
-                # Manejo de error de clave foránea
+                # Manejo de error de clave foránea (no se puede borrar si hay dependencias)
                 if e.args[0] == 1451:
                     match = re.search(r"fails \(`\w+`\.`(.+?)`\)", e.args[1])
                     tabla_dependiente = match.group(1) if match else "otra tabla"
@@ -1064,27 +1417,36 @@ class App(ctk.CTk):
                 if db.open: cur.close(); db.close()
 
     def editar_celda(self, ev):
-        """Permite editar el valor de una celda directamente en el Treeview."""
+        """
+        Permite editar el valor de una celda directamente en el Treeview.
+        """
+        # Solo permite editar si el usuario es administrador
         if not self.is_admin: return
-            
+
+        # Identifica la fila y columna seleccionada
         sel = self.tree.identify_row(ev.y)
         cid = self.tree.identify_column(ev.x)
         if not sel or not cid: return
 
+        # Obtiene el índice y nombre de la columna
         col_index = int(cid.replace("#", "")) - 1
         col_name = self.col[col_index]
         pk_col_name = self.col[0]
         pk_value = self.tree.item(sel)["values"][0]
 
+        # No permite editar la clave primaria
         if col_name.lower() == pk_col_name.lower():
             return mostrar_toast(f"La clave primaria ({pk_col_name}) no se puede editar.", self)
-            
+
         old_val = self.tree.item(sel)["values"][col_index]
-        
+
+        # Obtiene la posición y tamaño de la celda
         x, y, w, h = self.tree.bbox(sel, cid)
-        
+
+        # Determina si el campo es de tipo contraseña
         is_password_field = "pass" in col_name.lower() and "hash" not in col_name.lower()
-        
+
+        # Crea el widget de edición adecuado
         if is_password_field:
             ent = PasswordEntry(self.tree, width=w, height=h)
             ent.place(x=x, y=y)
@@ -1093,20 +1455,24 @@ class App(ctk.CTk):
             ent = ctk.CTkEntry(self.tree, width=w, height=h)
             ent.place(x=x, y=y)
             ent.insert(0, old_val)
-        
+
         ent.focus()
 
         def save(event):
-            """Guarda el nuevo valor de la celda en la base de datos."""
+            """
+            Guarda el nuevo valor de la celda en la base de datos.
+            """
             try:
                 new_val = ent.get()
                 ent.destroy()
             except TclError:
                 return 
-            
+
+            # Si no hay cambios, termina
             if new_val == old_val: return
 
             final_val = new_val
+            # Si es campo de contraseña, valida y hashea
             if is_password_field:
                 validation_error = validar_contrasena(new_val)
                 if validation_error:
@@ -1115,14 +1481,14 @@ class App(ctk.CTk):
 
             db = conectar_db()
             if not db: return
-            
+
             try:
                 cur = db.cursor()
-                # Se construye la consulta de forma segura
+                # Actualiza el valor en la base de datos
                 cur.execute(f"UPDATE `{self.table}` SET `{col_name}`=%s WHERE `{pk_col_name}`=%s", (final_val, pk_value))
                 db.commit()
-                
-                # Se registran los cambios para el historial
+
+                # Registra el cambio en el historial
                 antes = f"{col_name}: {old_val}"
                 despues = f"{col_name}: {final_val}"
                 if "pass" in col_name.lower():
@@ -1131,8 +1497,8 @@ class App(ctk.CTk):
 
                 registrar_historial(self.usuario, "UPDATE", self.table, pk_value, antes, despues)
                 self.cargar_tabla_actual()
-                
-                # Feedback visual con un "toast" (mejora de UX)
+
+                # Muestra notificación de éxito
                 mostrar_toast("Campo actualizado.", self)
             except MySQLError as err:
                 messagebox.showerror("Error al Actualizar", f"No se pudo guardar:\n{err}")
@@ -1147,14 +1513,14 @@ class App(ctk.CTk):
         """Muestra una ventana con el historial completo de cambios en la base de datos."""
         win = ctk.CTkToplevel(self)
         win.title("📋 Historial de Cambios")
-        win.geometry('1000x500')
+        win.minsize(800, 420)
         win.resizable(True, True)
         win.transient(self)
         win.protocol("WM_DELETE_WINDOW", win.destroy)
         win.after(10, win.grab_set)
-        
+
         frame = ctk.CTkFrame(win)
-        frame.pack(fill="both", expand=True, padx=10, pady=10)
+        frame.pack(fill="both", expand=True, padx=8, pady=8)
 
         style = ttk.Style(frame)
         style.theme_use("default")
@@ -1162,7 +1528,7 @@ class App(ctk.CTk):
         style.map('Treeview', background=[('selected', '#245d81')])
         style.configure("Treeview.Heading", background="#565b5e", foreground="white", relief="flat", font=('Calibri', 10, 'bold'))
         style.map("Treeview.Heading", background=[('active', '#343638')])
-        
+
         tv = ttk.Treeview(frame, style="Treeview")
         tv["columns"] = ("ID", "Usuario", "Fecha", "Acción", "Tabla", "ID Reg.", "Valores Anteriores", "Valores Nuevos")
         tv.column("#0", width=0, stretch="no")
@@ -1178,7 +1544,7 @@ class App(ctk.CTk):
 
         for col in tv["columns"]:
             tv.heading(col, text=col, anchor="w")
-        
+
         db = conectar_db()
         if not db: return
 
@@ -1190,17 +1556,19 @@ class App(ctk.CTk):
         except MySQLError as err:
             messagebox.showerror("Error", f"No se pudo cargar el historial:\n{err}", parent=win)
         finally:
-            if db.open: cur.close(); db.close()
-        
+            if db.open:
+                cur.close()
+                db.close()
+
         vsb = ttk.Scrollbar(frame, orient="vertical", command=tv.yview)
         tv.configure(yscrollcommand=vsb.set)
         hsb = ttk.Scrollbar(frame, orient="horizontal", command=tv.xview)
         tv.configure(xscrollcommand=hsb.set)
-        
+
         tv.grid(row=0, column=0, sticky="nsew")
         vsb.grid(row=0, column=1, sticky="ns")
         hsb.grid(row=1, column=0, sticky="ew")
-        
+
         frame.grid_columnconfigure(0, weight=1)
         frame.grid_rowconfigure(0, weight=1)
 
@@ -1208,15 +1576,15 @@ class App(ctk.CTk):
         """Muestra una ventana de ayuda y preguntas frecuentes."""
         win = ctk.CTkToplevel(self)
         win.title("❓ Ayuda y Preguntas Frecuentes")
-        win.geometry("600x400")
+        win.minsize(480, 360)
         win.resizable(True, True)
         win.transient(self)
         win.protocol("WM_DELETE_WINDOW", win.destroy)
         win.after(10, win.grab_set)
-        
+
         scroll_frame = ctk.CTkScrollableFrame(win)
-        scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
+        scroll_frame.pack(fill="both", expand=True, padx=8, pady=8)
+
         # El contenido de la ayuda varía si el usuario es administrador
         if self.is_admin:
             ctk.CTkLabel(scroll_frame, text="Ayuda para Administradores", font=ctk.CTkFont(size=20, weight="bold")).pack(pady=(10, 5))
@@ -1239,10 +1607,15 @@ class App(ctk.CTk):
                 "Mi contraseña no es aceptada, ¿por qué?": "Las contraseñas deben tener un mínimo de 8 caracteres, al menos una letra mayúscula y un carácter especial.",
                 "Olvidé mi contraseña, ¿qué hago?": "En la ventana de login, haz clic en 'Olvidé mi contraseña' y sigue las instrucciones para recibir un código de recuperación por correo."
             }
-        
+
+        lbls = []
         for pregunta, respuesta in faq.items():
-            ctk.CTkLabel(scroll_frame, text=f"**{pregunta}**", font=ctk.CTkFont(size=14, weight="bold"), wraplength=550, justify="left").pack(anchor="w", pady=(10, 0))
-            ctk.CTkLabel(scroll_frame, text=respuesta, font=ctk.CTkFont(size=12), wraplength=550, justify="left").pack(anchor="w", pady=(0, 5))
+            q = ctk.CTkLabel(scroll_frame, text=f"**{pregunta}**", font=ctk.CTkFont(size=14, weight="bold"), justify="left")
+            q.pack(anchor="w", pady=(10, 0))
+            a = ctk.CTkLabel(scroll_frame, text=respuesta, font=ctk.CTkFont(size=12), justify="left")
+            a.pack(anchor="w", pady=(0, 6))
+            lbls.extend([q, a])
+        _bind_responsive_wrap(win, lbls)
 
 # -----------------------------------------------
 # PUNTO DE ENTRADA DE LA APLICACIÓN
