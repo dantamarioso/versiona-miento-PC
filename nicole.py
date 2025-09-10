@@ -110,60 +110,8 @@ def conectar_db():
         return None
 
 def init_db():
-    """
-    Crea las tablas necesarias para la aplicación si no existen y asegura que exista un usuario administrador por defecto.
-    """
     db = conectar_db()
-    if not db:
-        return
-
-    try:
-        cur = db.cursor()
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS historial (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                usuario VARCHAR(50),
-                fecha DATETIME,
-                accion VARCHAR(20),
-                tabla VARCHAR(50),
-                registro_id VARCHAR(50),
-                valores_antes TEXT,
-                valores_despues TEXT
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS usuarios_app (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                username VARCHAR(50) UNIQUE,
-                password_hash VARCHAR(255),
-                email VARCHAR(255) UNIQUE,
-                es_admin BOOLEAN
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS recuperacion_codigos (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                username VARCHAR(50),
-                email VARCHAR(255),
-                codigo VARCHAR(6),
-                expiracion DATETIME
-            )
-        """)
-
-        # Crea el usuario admin si no existe
-        cur.execute("SELECT * FROM usuarios_app WHERE username='admin'")
-        if not cur.fetchone():
-            h = hashlib.sha256("Forlyfe135@".encode()).hexdigest()
-            cur.execute("INSERT INTO usuarios_app (username, password_hash, email, es_admin) VALUES (%s, %s, %s, %s)", ("admin", h, "nicole.informacion.1@gmail.com", True))
-
-        db.commit()
-    except MySQLError as err:
-        messagebox.showerror("Error de Inicialización", f"No se pudo inicializar la base de datos:\n{err}")
-    finally:
-        if db.open:
-            cur.close()
-            db.close()
-
+    
 def validar_email(email):
     """
     Valida sintácticamente una dirección de correo electrónico.

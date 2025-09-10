@@ -1,0 +1,28 @@
+DOCUMENTO DE ENDPOINTS FUNCIONALES DE N.I.C.O.L.E.
+
+1. AUTENTICACIÓN Y SESIÓN
+- Login de usuario: Permite iniciar sesión con usuario y contraseña. Valida credenciales y muestra mensajes de error si son incorrectas. Si el usuario es administrador, habilita funciones avanzadas.
+- Cerrar sesión: Finaliza la sesión actual y regresa a la ventana de login.
+
+2. GESTIÓN DE USUARIOS
+- Registrar nuevo usuario (solo administrador): Crea nuevos usuarios, enviando un código de confirmación al correo electrónico. Valida email, contraseña segura y confirmación por código. Guarda el usuario y registra la acción en el historial.
+- Recuperar contraseña: Permite solicitar un código de recuperación por correo y cambiar la contraseña. Valida email/usuario existente, código válido y nueva contraseña segura.
+- Cambiar datos personales: Permite cambiar correo y/o contraseña, con confirmación por código enviado al correo.
+
+3. GESTIÓN DE TABLAS Y REGISTROS
+- Visualizar tablas: Muestra las tablas disponibles en la base de datos (excepto las internas del sistema). Permite seleccionar una tabla y ver sus registros.
+- Buscar en tabla: Filtra los registros de la tabla actual según texto ingresado.
+- Añadir registro: Abre un formulario para agregar un nuevo registro a la tabla seleccionada. Valida campos completos y contraseñas seguras si aplica. Inserta el registro y lo registra en el historial.
+- Editar celda: Permite editar el valor de una celda directamente en la tabla (solo administrador). No permite editar la clave primaria, valida contraseñas si aplica. Actualiza el valor y lo registra en el historial.
+- Eliminar registro: Elimina el registro seleccionado de la tabla (solo administrador). Confirma la acción y verifica dependencias de clave foránea. Elimina el registro y lo registra en el historial.
+
+4. EXPORTACIÓN DE DATOS
+- Exportar tabla: Permite exportar los datos de la tabla actual en formato Excel (.xlsx), PDF (.pdf) o CSV (.csv). Genera el archivo y muestra mensaje de éxito o error.
+
+5. HISTORIAL DE CAMBIOS
+- Ver historial: Muestra una ventana con el historial de cambios (inserciones, actualizaciones, eliminaciones) realizados en la base de datos. Los administradores ven todo el historial, los usuarios solo sus propias acciones.
+
+6. AYUDA Y FAQ
+- Mostrar ayuda: Muestra una ventana con preguntas frecuentes y ayuda contextual, diferenciada para administradores y usuarios normales.
+
+Este documento resume todos los flujos y acciones principales disponibles en la aplicación N.I.C.O.L.E. para gestión de base de datos.
