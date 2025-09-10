@@ -1,0 +1,71 @@
+----------------------------------------------------------
+SECCIÓN: Introducción
+----------------------------------------------------------
+- “gestión de bases de datos” → “organizar y gestionar información”
+- “crear, eliminar y editar registros” → “ver, editar o eliminar datos”
+- “empaquetada como un único ejecutable” → “la aplicación viene en un solo archivo”
+
+----------------------------------------------------------
+SECCIÓN: Requisitos
+----------------------------------------------------------
+- “Usuario con permisos de administrador” → “Cuenta de usuario con acceso completo al equipo”
+
+----------------------------------------------------------
+SECCIÓN: Instalación
+----------------------------------------------------------
+- “Ejecute el instalador como Administrador” → “Abre el archivo de instalación como persona encargada del equipo”
+- “.exe” → se presenta como “archivo llamado Nicole”
+- “instalador” → “archivo de instalación”
+- “ruta” → “carpeta donde se guardará la aplicación”
+- “acceso directo” → “acceso rápido”
+
+----------------------------------------------------------
+SECCIÓN: Ingreso
+----------------------------------------------------------
+- “usuario (correo)” → “tu correo”
+- “pantalla principal donde podrás ver e interactuar con las tablas” → “pantalla principal donde podrás trabajar con los datos”
+
+----------------------------------------------------------
+SECCIÓN: Funcionalidades
+----------------------------------------------------------
+- “tabla” → “grupo de datos” o “conjunto de información”
+- “barra de búsqueda” → “cuadro de búsqueda”
+- “celda” → “dato”
+- “formulario” → “pantalla donde puedes escribir nuevos datos”
+- “registro” → “dato”
+
+----------------------------------------------------------
+SECCIÓN: Historial
+----------------------------------------------------------
+- “cambios efectuados en la base de datos con su respectiva marca de tiempo” → “cambios realizados con la fecha y hora correspondientes”
+
+----------------------------------------------------------
+SECCIÓN: Usuarios
+----------------------------------------------------------
+- “privilegios de administrador” → “acceso completo”
+- “permisos de administrador o rol estándar” → “permisos básicos o completos”
+
+----------------------------------------------------------
+SECCIÓN: Exportación
+----------------------------------------------------------
+- “formatos como Excel, PDF o CSV” → “archivos de uso común (como hojas de cálculo o texto)”
+- “prefiera CSV” → “elige formatos más ligeros como texto plano”
+
+----------------------------------------------------------
+SECCIÓN: Problemas
+----------------------------------------------------------
+- “Verifique conexión a internet, usuario/contraseña y que su cuenta tenga permisos.” →
+  “Revisa tu conexión a internet y asegúrate de que el usuario y contraseña estén correctos.”
+- “Revise la conexión a la base de datos y los permisos de escritura.” →
+  “Revisa si tienes conexión o si puedes modificar los datos.”
+- “Compruebe espacio en disco y que la ruta de destino exista y sea accesible.” →
+  “Asegúrate de tener espacio en el equipo y que la carpeta elegida exista.”
+HACER CORRECION EN EL REGISTRO DE USUSARIOS TRIGGERS Y EXPLICACION DETALLADO NO TECNICA
+
+GUARDADO DE ARCHIVOS DETALLLADA
+
+agregar olvidaste tu contraseña,cambiar datos de inicio
+
+
+
+

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Manual de Usuario - N.I.C.O.L.E</title>
+  <link rel="stylesheet" href="base.css"/>
+  <style>
+ /* ---- Base visual ---- */
+    :root{
+      --bg-panel: rgba(62,62,62,0.3);
+      --bg-panel-strong: rgba(62,62,62,0.3);
+      --text: #f0f0f0;
+      --muted: #cfcfcf;
+      --line: #5a5a5a;
+      --brand: #000;
+      --warn-bg: rgba(255, 204, 0, 0.18);
+      --warn-line: #ffcc00;
+      --error-bg: rgba(255, 68, 68, 0.15);
+      --error-line: #ff4444;
+      --tip-bg: rgba(0, 200, 120, 0.15);
+      --tip-line: #00c878;
+    }
+    html, body{
+      scroll-behavior: smooth;
+      height: 100%;
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: url('fondo.jpg') no-repeat center center fixed;
+      background-size: cover;
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    .manual-container{
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 24px;
+      background: var(--bg-panel);
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,.4);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    /* ---- Títulos ---- */
+    h1, h2, h3{
+      color: var(--text);
+      font-weight: 600;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      scroll-margin-top: 100px; /* anclaje cómodo al saltar */
+    }
+    h1{
+      font-size: 2.4rem;
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 10px;
+    }
+    h2{
+      font-size: 1.8rem;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 6px;
+    }
+    h3{
+      font-size: 1.25rem;
+    }
+
+    p, li{ font-size: 1.05rem; line-height: 1.6; }
+    .section-content{ margin-left: 20px; }
+
+    /* ---- Imágenes ---- */
+    .screenshot{
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 10px;
+      margin: 16px 0 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.3);
+    }
+
+    /* ---- Listas ---- */
+    .list-style-none{ list-style: none; padding-left: 0; }
+    .list-style-none li{ margin-bottom: 6px; }
+
+    /* ---- Bloque Developers ---- */
+    .developers{
+      font-size: .95em;
+      color: #fff;
+      margin-top: 20px;
+      border-top: 1px solid rgba(255,255,255,.4);
+      padding: 15px;
+      background: var(--bg-panel-strong);
+      backdrop-filter: blur(6px) brightness(1.1);
+      -webkit-backdrop-filter: blur(6px) brightness(1.1);
+      border-radius: 10px;
+    }
+
+    /* ---- Tabla de contenido ---- */
+    .toc{
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin: 12px 0 28px;
+    }
+    .toc h3{ margin: 0 0 10px; font-size: 1.1rem; color: var(--muted); }
+    .toc ul{ margin: 0; padding-left: 18px; }
+    .toc a{
+      color: var(--brand);
+      text-decoration: none;
+    }
+    .toc a:hover{ text-decoration: underline; }
+
+    /* ---- Cajas de notas/advertencias/tips ---- */
+    .note, .note1, .note2, .warning, .tip{
+      padding: 12px 14px;
+      border-radius: 10px;
+      margin: 14px 0 18px;
+      border-left: 4px solid;
+    }
+    .warning{ background: var(--warn-bg); border-left-color: var(--warn-line); }
+    .note{ background: rgba(255,255,255,.08); border-left-color: #9aa0a6; }
+    .tip{ background: var(--tip-bg); border-left-color: var(--tip-line); }
+    .note1{background: rgba(255,255,255,.08); border-left-color: #0a4988;}
+    .note2{background: rgba(255,255,255,.08); border-left-color: #aa071d;}
+
+    /* ---- Bloque de problemas ---- */
+    .problemas{
+      background: var(--error-bg);
+      border-left: 4px solid var(--error-line);
+      padding: 14px;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+
+    /* ---- Footer de acciones ---- */
+    .actions{
+      display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px;
+    }
+    .btn{
+      display: inline-block;
+      padding: 10px 14px;
+      border-radius: 10px;
+      text-decoration: none;
+      color: #0b0b0b;
+      background: #e6faff;
+      border: 1px solid #b8f0ff;
+      font-weight: 600;
+    }
+    .btn:hover{ filter: brightness(1.03); }
+
+    /* ---- Regla sutil ---- */
+    hr{
+      border: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);
+      margin: 28px 0;
+    }
+
+    /* ---- “Volver arriba” ---- */
+    .back-top{
+      position: fixed; right: 16px; bottom: 16px;
+      padding: 10px 12px; border-radius: 999px;
+      background: rgba(255,255,255,.1);
+      color: var(--text); text-decoration: none;
+      border: 1px solid rgba(255,255,255,.2);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      font-size: .95rem;
+    }
+    .back-top:hover{ background: rgba(255,255,255,.18); }
+    
+.header-icon {
+    position: absolute;
+    top: 10px; /* separación desde arriba */
+    right: 10px; /* separación desde la derecha */
+    width: 180px;  /* tamaño del ícono */
+    height: auto;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.header-icon:hover {
+    transform: scale(1.1); /* pequeño zoom al pasar el mouse */
+}
+  </style>
+</head>
+<body>
+
+<div class="manual-container">
+  <div class="header">
+    <h1 id="top">Manual de Usuario, APP escritorio <img src="icono.jpg" alt="Icono" class="header-icon"></h1>
+    <p><strong>version 0.0.1</strong></p>
+
+  <!-- Tabla de contenido -->
+  <nav class="toc" aria-label="Tabla de contenido">
+    <h3>Tabla de contenido</h3>
+    <ul>
+      <li><a href="#developers">desarrolladores</a></li>
+      <li><a href="#introduccion">Introducción</a></li>
+      <li><a href="#requisitos">requisitos</a></li>
+      <li><a href="#instalacion">Instalación</a></li>
+      <li><a href="#ingreso">Ingreso</a></li>
+      <li><a href="#funcionalidades">Funciones principales</a></li>
+      <li><a href="#historial">Historial</a></li>
+      <li><a href="#usuarios">Crear usuarios</a></li>
+      <li><a href="#exportar">Guardar datos</a></li>
+      <li><a href="#conclusiones">Conclusiones</a></li>
+      <li><a href="#problemas">Solución de problemas</a></li>
+    </ul>
+  </nav>
+
+  <!-- Autores -->
+  <div class="developers" id="developers">
+    <p><strong>Desarrolladores:</strong></p>
+    <ul class="list-style-none">
+      <li>Mario Alejandro Ruiz Bedoya</li>
+      <li>David Mateo Vega Perdomo</li>
+      <li>Jhon Daved Taborda</li>
+      <li>Cristian Andrés Gómez</li>
+      <li>Jorge Enrique Romero</li>
+      <li>José Daniel Vanegas Molina</li>
+      <li>Daniel Chávez Pejendino</li>
+      <li>Juan Esteban Villegas Vélez</li>
+      <li>Juan José Victoria</li>
+      <li>Manuel Stiven Cespedes</li>
+      <li>Nestor Alexander Martinez Palencia</li>
+    </ul>
+  </div>
+
+  <!-- Introducción -->
+  <h2 id="introduccion">Introducción</h2>
+  <p>
+    N.I.C.O.L.E (Inteligencia Neuronal como Chef, Ofreciendo Experiencias de Aprendizaje) es una aplicación de escritorio pensada para ayudar a organizar y gestionar información de manera sencilla. Con una presentación clara y fácil de usar, permite ver, editar o eliminar datos sin complicaciones. La aplicación viene en un solo archivo que se puede usar en cualquier computador con Windows, sin necesidad de instalar programas adicionales.
+  </p>
+  <div class="tip">💡 <strong>Consejo:</strong> Mantén tu copia de N.I.C.O.L.E actualizada para aprovechar mejoras y correcciones.</div>
+
+  <!-- Requisitos -->
+  <h2 id="requisitos">Requisitos</h2>
+  <ul>
+    <li>Computador con Windows 10 o 11</li>
+    <li>Conexión a internet</li>
+    <li>Cuenta de usuario con acceso completo al equipo</li>
+    <li>Usuario entregado el cual es:
+      usuario: admin
+      Contraseña: Forlyfe135@
+      Correo: nicole.informacion.1@gmail.com
+    </li>
+  </ul>
+
+  <!-- Instalación -->
+  <h2 id="instalacion">Instalación</h2>
+  <div class="warning">⚠️ <strong>Importante:</strong> Abre el archivo de instalación como persona encargada del equipo para evitar errores.</div>
+  <p>Descarga el archivo enviado por correo y haz doble clic sobre el archivo llamado <code>Nicole</code>. Sigue estos pasos:</p>
+  <ol>
+    <li>Elige si deseas que esté disponible solo para ti o para todos los usuarios del equipo.</li>
+    <img src="1.png" alt="Modo de instalación" class="screenshot">
+    <li>Selecciona el idioma: español o inglés.</li>
+    <img src="2.png" alt="Selección de idioma" class="screenshot">
+    <li>Acepta las condiciones para continuar.</li>
+    <img src="3.png" alt="Acuerdo de licencia" class="screenshot">
+    <li>Elige la carpeta donde se guardará la aplicación.</li>
+    <img src="4.png" alt="Carpeta de destino" class="screenshot">
+    <li>Decide si deseas un acceso rápido en el escritorio.</li>
+    <img src="5.png" alt="Acceso directo" class="screenshot">
+    <li>Haz clic en <em>Instalar</em> para completar.</li>
+    <img src="6.png" alt="Finalizar instalación" class="screenshot">
+  </ol>
+  <div class="note">ℹ️ Si tu programa de seguridad no permite la instalación, agrégalo a la lista de excepciones y vuelve a intentarlo.</div>
+
+  <!-- Ingreso -->
+  <h2 id="ingreso">Ingreso</h2>
+  <p>Para comenzar a usar la aplicación:</p>
+  <ol>
+    <li>Escribe tu correo y contraseña.</li>
+    <img src="7.png" alt="Login" class="screenshot">
+    <div class="note">ℹ️ use los datos de inicio ,suministrados en los requisitos si es el primer ingreso</div>
+    <div class="note1">ℹ️ en el primer ingreso se inica como Administrador, con el usuario admin</div>
+    <div class="note2">ℹ️ se permite ingreso como usuario y como Administrador, pero primero se tiene que hacer el ingreso con los datos por defecto y luego crear un usuario ya sea estandar o Administrador</div>
+    <li>Haz clic en <em>Continuar</em>.</li>
+    <img src="8.png" alt="Bienvenida" class="screenshot">
+    <li>Verás la pantalla principal donde podrás trabajar con los datos permitidos.</li>
+    <img src="9.png" alt="Interfaz principal" class="screenshot">
+  </ol>
+
+  <!-- Funcionalidades -->
+  <h2 id="funcionalidades">Funciones principales</h2>
+  <div class="section-content">
+    <h3>1. Elegir grupo de datos</h3>
+    <p>Selecciona qué conjunto de información deseas ver desde una lista.</p>
+    <img src="10.png" alt="Selección de tabla" class="screenshot">
+
+    <h3>2. Buscar datos</h3>
+    <p>Usa el cuadro de búsqueda para encontrar lo que necesitas.</p>
+    <img src="11.png" alt="Barra de búsqueda" class="screenshot">
+
+    <h3>3. Cambiar información</h3>
+    <p>Haz doble clic sobre el dato que deseas editar.</p>
+    <img src="12.png" alt="Edición de datos" class="screenshot">
+    
+    <h3>4. Agregar información</h3>
+    <p>Haz clic en <em>Añadir</em> para abrir una pantalla donde puedes escribir nuevos datos.</p>
+    <img src="13.png" alt="Añadir registro" class="screenshot">
+    
+    <h3>5. Eliminar información</h3>
+    <p>Selecciona un dato y haz clic en <em>Borrar</em>. Se te pedirá confirmar antes de eliminar.</p>
+    <img src="14.png" alt="Confirmar borrado" class="screenshot">
+  </div>
+
+  <!-- Olvidaste tu contraseña -->
+  <h2 id="olvidaste-contraseña">Olvidaste tu contraseña</h2>
+  <p>Si no recuerdas tu contraseña, haz clic en <em>¿Olvidaste tu contraseña?</em> en la pantalla de inicio de sesión. Sigue las instrucciones para restablecerla.</p>
+  <img src="18.png" alt="Restablecer contraseña" class="screenshot">
+  <img src="19.png" alt="Correo de restablecimiento" class="screenshot">
+  <img src="20.png" alt="Instrucciones de restablecimiento" class="screenshot">
+  <img src="21.png" alt="Confirmación de restablecimiento" class="screenshot">
+  <p>Recibirás un correo con un código para restablecer tu contraseña.</p>
+  <img src="22.png" alt="Código de restablecimiento" class="screenshot">
+  <p>Introduce el código en la aplicación para crear una nueva contraseña.</p>
+  <img src="23.png" alt="Nueva contraseña" class="screenshot">
+  <div class="tip">💡 <strong>Consejo:</strong> Usa contraseñas seguras y únicas , de minimo una mayuscula y 8 caracteres y un cracater epecial:@#$ etc.</div>
+
+  <!--modificar correo y contraseña-->
+  <h2 id="modificar-correo-contraseña">Modificar correo y contraseña</h2>
+  <p>Para cambiar tu correo o contraseña, ve a la sección de cambiar mis datos.</p>
+  <img src="24.png" alt="Configuración de usuario" class="screenshot">
+  <p>Realiza los cambios necesarios y guarda los cambios.</p>
+  <img src="26.png" alt="Guardar cambios" class="screenshot">
+  <p>se enviara un correo con un codigo para confirmar los cambios</p>
+  <img src="31.png" alt="codigo cambios" width="640"
+  >
+  <p>ingresa el codigo</p>
+  <img src="32.png" alt="confirmar cambios">
+  <div class="tip">💡 <strong>Consejo:</strong> Asegúrate de revisar tus cambios antes de guardar .></div>
+  <div class="tip">💡 <strong>Consejo:</strong> es recomendable cambiar el correo y la contraseña del usuario implementado en el manual .></div>
+
+  <!--FAQ ADMIN-->
+  <h2 id="faq-admin">Preguntas frecuentes - Administrador</h2>
+  <p>dale click al icono de ayuda</p>
+  <img src="27.png" alt="Icono de ayuda" class="screenshot">
+  <p>Aquí encontrarás respuestas a las preguntas más comunes sobre la administración de la aplicación.</p>
+  <img src="28.png" alt="FAQ Administrador" class="screenshot">
+
+  <!--FAQ USUARIO-->
+  <h2 id="faq-usuario">Preguntas frecuentes - Usuario</h2>
+  <p>dale click al icono de ayuda</p>
+  <img src="27.png" alt="Icono de ayuda" class="screenshot">
+  <p>Aquí encontrarás respuestas a las preguntas más comunes sobre el uso de la aplicación.</p>
+  <img src="30.png" alt="FAQ Usuario" class="screenshot">
+
+  <!-- Historial -->
+  <h2 id="historial">Historial</h2>
+  <p>Podrás ver los cambios realizados, como nuevas entradas, ediciones o eliminaciones, con la fecha y hora correspondientes.</p>
+  <img src="15.png" alt="Historial de cambios" class="screenshot">
+
+  <!-- Usuarios -->
+  <h2 id="usuarios">Crear usuarios</h2>
+  <p>Si tienes acceso completo, puedes agregar nuevos usuarios y decidir si tendrán permisos básicos o completos.</p>
+  <img src="16.png" alt="Crear nuevo usuario" class="screenshot">
+  <p>se enviara un codigo al correo para confirmar la creaccion de usuario</p>
+  <img src="33.png" alt="codigo creaccion">
+  <p>se confirma la creaccion del usuario</p>
+  <img src="34.png" alt="confirmacion usuario">
+  <div class="tip">💡 <strong>Consejo:</strong> Usa contraseñas seguras y únicas , de minimo una mayuscula y 8 caracteres y un cracater epecial:@#$ etc.</div>
+
+  <!-- Exportación -->
+  <h2 id="exportar">Guardar datos</h2>
+  <p>Se pueden guardar los datos actuales en archivos de uso común (como hojas de cálculo o texto). También puedes elegir en qué carpeta guardarlos.</p>
+  <img src="17.png" alt="Exportar datos" class="screenshot">
+  <div class="note">ℹ️ Para muchos datos, elige formatos más ligeros como texto plano.</div>
+
+  <hr/>
+
+  <!-- Conclusiones -->
+  <h2 id="conclusiones">Conclusiones</h2>
+  <p>
+    N.I.C.O.L.E ayuda a trabajar con información de forma clara, rápida y sin instalaciones complejas. Este manual te guía paso a paso para instalar, configurar y usar la herramienta sin necesidad de conocimientos técnicos.
+  </p>
+  <p>
+    Con buenos hábitos como guardar copias, revisar cambios y organizar bien los datos, esta aplicación puede ser un apoyo muy útil en tu día a día.
+  </p>
+
+  <!-- Problemas -->
+  <h2 id="problemas">Solución de problemas</h2>
+  <div class="problemas">
+    <ul>
+      <li><strong>No puedo ingresar:</strong> Revisa tu conexión a internet y asegúrate de que el usuario y contraseña estén correctos.</li>
+      <li><strong>La aplicación no abre:</strong> Intenta abrirla como responsable del equipo o reinstala el archivo.</li>
+      <li><strong>No veo ciertos datos:</strong> Puede que no tengas permiso para verlos. Consulta con quien administra la aplicación.</li>
+      <li><strong>Los cambios no se guardan:</strong> Revisa si tienes conexión o si puedes modificar los datos.</li>
+      <li><strong>No puedo guardar los datos:</strong> Asegúrate de tener espacio en el equipo y que la carpeta elegida exista.</li>
+    </ul>
+  </div>
+
+  <!-- Acciones -->
+  <div class="actions">
+    <a class="btn" href="#top">⬆️ Volver arriba</a>
+  </div>
+</div>
+
+<a class="back-top" href="#top" aria-label="Volver arriba">↑</a>
+
+</body>
+</html>

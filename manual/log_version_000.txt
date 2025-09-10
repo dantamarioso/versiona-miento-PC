@@ -1,0 +1,11 @@
+cambios realizados en el manual:
+se agrego version y especificacion de manual
+se agregaron requisitos y tips(ingreso y cambio de datos)
+se agrego la nota ℹ️ use los datos de inicio ,suministrados en los requisitos si es el primer ingreso
+se agrego la nota ℹ️ en el primer ingreso se inica como Administrador, con el usuario admin
+se agrego la nota ℹ️ se permite ingreso como usuario y como Administrador, pero primero se tiene que hacer el ingreso con los datos por defecto y luego crear un usuario ya sea estandar o Administrador
+se agrego el consejo 💡es recomendable cambiar el correo y la contraseña del usuario implementado en el manual .
+se agrego los datos del primer inicio: Usuario entregado el cual es:
+ #usuario: admin
+ #Contraseña: Forlyfe135@
+ #Correo: nicole.informacion.1@gmail.com

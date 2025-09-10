@@ -1,9 +1,13 @@
-¡Bienvenido al Gestor de Datos Nicole!
+Bienvenido a Nicole!
 
 Instrucciones de Instalación y Primer Inicio
-Nos alegra que estés listo para comenzar. Para usar tu aplicación "Gestor de Datos Nicole", sigue estos sencillos pasos para la instalación y tu primer inicio de sesión.
- Primer Inicio de Sesión
-Abre la aplicación: Una vez instalado, abre el "Gestor de Datos Nicole" desde el acceso directo que se creó en tu escritorio o desde el menú de inicio de Windows.
+Nos alegra que estés listo para comenzar. Para usar tu aplicación "Gestor de Datos Nicole", sigue estos sencillos pasos 
+para la instalación y tu primer inicio de sesión.
+
+Primer Inicio de Sesión
+
+Abre la aplicación: Una vez instalado; abre el "Gestor de Datos Nicole" desde el acceso directo que se creó en tu 
+escritorio o desde el menú de inicio de Windows.
 
 Introduce tus credenciales: Al ser la primera vez que la usas, deberás iniciar sesión con los datos predeterminados:
 
@@ -11,8 +15,12 @@ Usuario: admin
 
 Contraseña: Forlyfe135@
 
-Una vez que ingreses estos datos, podrás acceder a la aplicación y empezar a gestionar tus datos. ¡Estamos listos para que comiences a trabajar!
+Una vez que ingreses estos datos, podrás acceder a la aplicación y empezar a gestionar tus datos. 
 
-Importante: Se recomienda encarecidamente modificar los datos de usuario (admin) y la contraseña (Forlyfe135@) durante el primer inicio de sesión para garantizar la seguridad de tu información.
+¡Estamos listos para que comiences a trabajar!
+
+Importante: Se recomienda encarecidamente modificar los datos de usuario (admin) y la contraseña (Forlyfe135@) 
+durante el primer inicio de sesión para garantizar la seguridad de tu información.
 
 Para más detalles sobre las funciones y la configuración de la aplicación, consulta el manual de usuario.
+
