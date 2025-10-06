@@ -1490,7 +1490,7 @@ class App(ctk.CTk):
         if not self.col:
             return
 
-        # Configura el Treeview con las nuevas columnas y datos
+        # Configura el Treeview con las nuevas columnas y datos.
         self.table = tabla
         self.tree["columns"] = self.col
         self.tree["show"] = "headings"
@@ -1928,6 +1928,7 @@ class App(ctk.CTk):
             a.pack(anchor="w", pady=(0, 6))
             lbls.extend([q, a])
         _bind_responsive_wrap(win, lbls)
+
 
 # -----------------------------------------------
 # PUNTO DE ENTRADA DE LA APLICACIÓN
