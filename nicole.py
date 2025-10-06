@@ -56,25 +56,44 @@ load_dotenv()
 # CONFIGURACIÓN DE CREDENCIALES
 # --------------------------------
 # Carga las credenciales del servidor de correo electrónico desde el archivo .env
+## @var EMAIL_HOST
+#  @brief Dirección del servidor SMTP para el envío de correos.
 EMAIL_HOST = os.getenv("EMAIL_HOST")
+
+## @var EMAIL_PORT
+#  @brief Puerto del servidor SMTP.
 EMAIL_PORT = os.getenv("EMAIL_PORT")
+
+## @var EMAIL_USER
+#  @brief Usuario de autenticación para el servidor de correo.
 EMAIL_USER = os.getenv("EMAIL_USER")
+
+## @var EMAIL_PASS
+#  @brief Contraseña de autenticación para el servidor de correo.
 EMAIL_PASS = os.getenv("EMAIL_PASS")
+
+## @var EMAIL_SENDER
+#  @brief Dirección de correo electrónico del remitente.
 EMAIL_SENDER = os.getenv("EMAIL_SENDER")
 
 # -----------------------------------------------
 # FUNCIONES DE VALIDACIÓN Y GESTIÓN DE LA BASE DE DATOS
 # -----------------------------------------------
 
+
 def resource_path(relative_path: str) -> str:
     """
-    Devuelve la ruta absoluta de un recurso (archivo), considerando si el programa está empaquetado con PyInstaller.
-    """
+    Devuelve la ruta absoluta de un recurso (archivo).
+
+    Esta función permite obtener la ruta absoluta de un archivo de recursos,
+    considerando si el programa ha sido empaquetado con PyInstaller o si está
+    en un entorno de desarrollo normal.
+     """
     try:
-        # Cuando el programa está empaquetado con PyInstaller, usa la carpeta temporal
+        """ Cuando el programa está empaquetado con PyInstaller, usa la carpeta temporal"""
         base_path = sys._MEIPASS
     except AttributeError:
-        # Si no existe, significa que estamos en desarrollo
+        """ Si no existe, significa que estamos en desarrollo """
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
@@ -231,48 +250,14 @@ def enviar_email_cod(destinatario, codigo, tipo="recuperacion", username=None, e
                         pass
 
             if tipo == 'registro':
-                asunto = " N.I.C.O.L.E - Verificación de cuenta nueva"
-                cuerpo = (
-                    "============================\n\n"
-                    f"Hola {username if username else ''},\n\n"
-                    "¡Gracias por registrarte en N.I.C.O.L.E.!\n\n"
-                    "Para finalizar tu proceso de registro, por favor ingresa el siguiente código de verificación:\n\n"
-                    f"🔸 Código de verificación: {codigo}\n\n"
-                    "Este código es personal y tiene una validez limitada. No lo compartas con nadie.\n\n"
-                    f"Validez del código: 15 minutos desde su emisión.\n\n"
-                    "Si tú no iniciaste este proceso de registro, puedes ignorar este mensaje.\n\n"
-                    "Saludos cordiales,\n"
-                    "El equipo de seguridad de N.I.C.O.L.E.\n\n"
-                    "============================"
-                )
+                asunto = "Confirma tu cuenta en N.I.C.O.L.E"
+                cuerpo = f"Hola {username if username else ''},\n\n¡Bienvenido a N.I.C.O.L.E! Confirma tu cuenta ingresando este código: {codigo}\n\nSi no solicitaste esto, ignora este mensaje.\n\nSaludos,\nEl equipo de N.I.C.O.L.E"
             elif tipo == 'cambio':
-                asunto = " N.I.C.O.L.E - Verificación de cambio de correo"
-                cuerpo = (
-                    "===========================\n\n"
-                    f"Hola {username if username else ''},\n\n"
-                    "Hemos recibido una solicitud para actualizar el correo electrónico asociado a tu cuenta en N.I.C.O.L.E.\n\n"
-                    f"Nuevo correo solicitado: {email_destino if email_destino else destinatario}\n\n"
-                    f"🔸 Código de verificación para confirmar el cambio: {codigo}\n\n"
-                    "Este código tiene una validez temporal y debe ser ingresado para validar el cambio.\n\n"
-                    "Protegemos tu identidad y seguridad en todo momento. Si tú NO solicitaste este cambio, contacta de inmediato con un administrador.\n\n"
-                    "Atentamente,\n"
-                    "El equipo de seguridad de N.I.C.O.L.E.\n\n"
-                    "==========================="
-                )
+                asunto = "Confirma cambio de correo en N.I.C.O.L.E"
+                cuerpo = f"Hola {username if username else ''},\n\nHemos recibido una solicitud para cambiar el correo de tu cuenta a {email_destino if email_destino else destinatario}. Para confirmar este cambio ingresa el código: {codigo}\n\nSi no solicitaste este cambio, contacta con el administrador.\n\nSaludos,\nEl equipo de N.I.C.O.L.E"
             else:
-                asunto = " N.I.C.O.L.E - Código de recuperación de contraseña"
-                cuerpo = (
-                    "==========================\n\n"
-                    f"Hola {username if username else ''},\n\n"
-                    "Has solicitado recuperar el acceso a tu cuenta en N.I.C.O.L.E.\n\n"
-                    f"🔸 Tu código de verificación es: {codigo}\n\n"
-                    "Este código es único, temporal y tiene una validez de 15 minutos. Úsalo para restablecer tu contraseña de forma segura.\n\n"
-                    "Importante: Si tú NO realizaste esta solicitud, contacta de inmediato a un administrador para proteger tu cuenta.\n\n"
-                    "Tu seguridad es nuestra prioridad.\n\n"
-                    "Saludos cordiales,\n"
-                    "El equipo de seguridad de N.I.C.O.L.E.\n\n"
-                    "============================"
-                )
+                asunto = "Código de Recuperación de Contraseña N.I.C.O.L.E"
+                cuerpo = f"Hola {username if username else ''},\n\nHas solicitado un código para recuperar tu contraseña.\nTu código de verificación es: {codigo}\n\nEste código es válido por 15 minutos. Si no solicitaste este cambio, ignora este mensaje.\n\nSaludos,\nEl equipo de N.I.C.O.L.E"
 
             msg = f"Subject: {asunto}\n\n{cuerpo}"
             server.sendmail(EMAIL_SENDER, destinatario, msg.encode('utf-8'))
@@ -1916,28 +1901,28 @@ class App(ctk.CTk):
         if self.is_admin:
             ctk.CTkLabel(scroll_frame, text="Ayuda para Administradores", font=ctk.CTkFont(size=20, weight="bold")).pack(pady=(10, 5))
             faq = {
-                "¿Cómo añadir un registro?": "Selecciona la tabla y haz clic en '➕ Añadir'. Completa los campos y guarda el registro. (Solo administradores)",
-                "¿Cómo editar un dato?": "Haz doble clic sobre la celda que quieres modificar, escribe el nuevo valor y presiona 'Enter'. (Solo administradores)",
-                "¿Por qué no puedo eliminar un registro?": "No se puede eliminar si el registro está vinculado a otra tabla. Elimina primero los registros dependientes. (Solo administradores)",
-                "¿Cómo crear un nuevo usuario?": "Haz clic en '👤 Nuevos usuarios' y completa el formulario para registrar una cuenta nueva. (Solo administradores)",
-                "¿Cómo cambiar mis datos?": "Haz clic en '⚙️ Cambiar mis datos' para modificar tu correo o contraseña.",
-                "¿Qué muestra el historial?": "El historial registra todas las acciones realizadas en la base de datos, indicando usuario, fecha y tipo de cambio. Las contraseñas y datos sensibles están protegidos.",
-                "¿Cómo exportar datos?": "Haz clic en '📦 Exportar' y elige el formato deseado (Excel, PDF, CSV) para guardar los datos de la tabla seleccionada. (Solo administradores)",
-                "¿Qué puede hacer el administrador?": "Puede consultar, añadir, editar y eliminar registros, crear usuarios, cambiar sus propios datos, ver el historial completo y exportar datos."
+                "¿Cómo añado un nuevo registro?": "Selecciona una tabla y haz clic en '➕ Añadir'. Completa el formulario y haz clic en 'Guardar'.",
+                "¿Cómo edito un dato?": "Haz doble clic sobre la celda que deseas modificar. Escribe el nuevo valor y presiona 'Enter'.",
+                "¿Por qué no puedo eliminar un registro?": "Es posible que el registro esté siendo usado como clave foránea en otra tabla. Debes eliminar primero los registros dependientes.",
+                "¿Cómo creo un nuevo usuario o cambio sus datos?": "Haz clic en '👤 Nuevos usuarios' para crear una nueva cuenta. Puedes usar '⚙️ Cambiar mis datos' para modificar tu información.",
+                "¿Qué información me muestra el historial?": "El 'Historial de Cambios' registra todas las acciones de inserción, actualización y eliminación de datos, incluyendo quién las realizó y cuándo. Los datos sensibles como contraseñas y claves de usuarios están enmascarados para mayor seguridad.",
+                "Mi contraseña no es aceptada, ¿por qué?": "Las contraseñas deben tener un mínimo de 8 caracteres, al menos una letra mayúscula y un carácter especial.",
+                "Olvidé mi contraseña, ¿qué hago?": "En la ventana de login, haz clic en 'Olvidé mi contraseña' y sigue las instrucciones para recibir un código de recuperación por correo.",
+                "No puedo conectar a la base de datos": "Verifica que el servidor MySQL esté corriendo y que la configuración en tu archivo '.env' sea correcta (host, usuario, contraseña, etc.)."
             }
         else:
             ctk.CTkLabel(scroll_frame, text="Ayuda para Usuarios", font=ctk.CTkFont(size=20, weight="bold")).pack(pady=(10, 5))
             faq = {
-                "¿Cómo consultar datos?": "Selecciona la tabla que deseas ver. Puedes buscar información usando el campo de búsqueda.",
-                "¿Por qué no puedo añadir, editar o eliminar registros?": "Solo los administradores pueden modificar los datos. Si necesitas realizar cambios, contacta a un administrador.",
-                "¿Cómo cambiar mis datos?": "Haz clic en '⚙️ Cambiar mis datos' para modificar tu correo o contraseña.",
-                "¿Qué muestra el historial?": "Solo puedes ver el historial de tus propios cambios realizados en la base de datos.",
-                "¿Qué puede hacer el usuario?": "Consultar datos de las tablas y cambiar sus propios datos. No puede añadir, editar, eliminar registros ni crear usuarios nuevos."
+                "¿Cómo añado un nuevo registro?": "Selecciona una tabla y haz clic en '➕ Añadir'. Completa el formulario y haz clic en 'Guardar'.",
+                "¿Cómo edito un dato?": "Haz doble clic sobre la celda que deseas modificar. Escribe el nuevo valor y presiona 'Enter'.",
+                "¿Por qué no puedo eliminar un registro?": "Tu nivel de usuario no tiene permisos para borrar registros. Contacta a un administrador para realizar esta acción.",
+                "Mi contraseña no es aceptada, ¿por qué?": "Las contraseñas deben tener un mínimo de 8 caracteres, al menos una letra mayúscula y un carácter especial.",
+                "Olvidé mi contraseña, ¿qué hago?": "En la ventana de login, haz clic en 'Olvidé mi contraseña' y sigue las instrucciones para recibir un código de recuperación por correo."
             }
 
         lbls = []
         for pregunta, respuesta in faq.items():
-            q = ctk.CTkLabel(scroll_frame, text=pregunta, font=ctk.CTkFont(size=14, weight="bold"), justify="left")
+            q = ctk.CTkLabel(scroll_frame, text=f"**{pregunta}**", font=ctk.CTkFont(size=14, weight="bold"), justify="left")
             q.pack(anchor="w", pady=(10, 0))
             a = ctk.CTkLabel(scroll_frame, text=respuesta, font=ctk.CTkFont(size=12), justify="left")
             a.pack(anchor="w", pady=(0, 6))
